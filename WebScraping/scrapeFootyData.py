@@ -18,8 +18,7 @@ if __name__ == "__main__":
         bs = BeautifulSoup(html, 'html.parser')
         
         # Get the team names
-        team_table = bs.find('table', {'class': 'items'})
-        team_rows = team_table.find_all('td', {"class":"hauptlink no-border-links"})
+        team_rows = bs.find('table', {'class': 'items'}).find_all('td', {"class":"hauptlink no-border-links"})
         
         teams = {}
         for row in team_rows:
@@ -28,5 +27,3 @@ if __name__ == "__main__":
             team_id = team_href.split('/')[4]
             teams[team_name]={'href': team_href, 'id': team_id}
         print(teams)
-        #teams = [row.text.strip().split(' \\')[0] for row in team_rows]
-        #print(teams)
