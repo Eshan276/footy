@@ -3,13 +3,14 @@ import pandas as pd
 import numpy as np
 import sys
 import os
-
+import ast
+import json
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
 from Database.database import Database
-from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams
+from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams, get_players_for_all_teams
 from Configuration import Configuration
 import datetime
 
@@ -67,12 +68,40 @@ class createTables(): # alternatively fillTables
     # next implement the same structure for the player data
     def meta_players_table():
         pass
-    def data_players_table():
-        pass
+
+    def data_player_table(config):
+        con = sqlite3.connect("Database/database.db")
+        cur = con.cursor()
+        # query the data from all available teams
+        teams_df = pd.read_sql_query(f"select * from data_club_table", con)
+        # determine the unique player data for every team in teams_df
+        df = get_players_for_all_teams(config, teams_df)
+        # write the player data to the database
+        df.to_sql(name="data_player_table", con=con, if_exists="replace", index=False)
+        con.commit()
+        cur.close()
+        con.close()
+    
+    def get_data_player_data():
+        con = sqlite3.connect("Database/database.db")
+        df = pd.read_sql_query(f"select * from data_player_table", con)
+        columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
+        for col in columns_with_list_type:
+            if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
+                df.loc[df.other_positions=="nan","other_positions"] = str([])
+            df[col] = df[col].apply(ast.literal_eval)
+        con.close()
+        return df
 
 if __name__ == "__main__":
     config = Configuration()
-    df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
-    df = add_all_historical_info_selected_teams(df)
-    createTables.meta_clubs_table(config, df)
-    createTables.data_clubs_table(config, df)
+    #df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
+    #df = add_all_historical_info_selected_teams(df)
+    #createTables.data_player_table(config)
+
+    df = createTables.get_data_player_data()
+    print(df.transfer_club_ids[0])
+    print(np.unique(df.transfer_club_ids[0]))
+    # print(df.loc[df.other_positions=="nan",:])
+    #createTables.meta_clubs_table(config, df)
+    #createTables.data_clubs_table(config, df)

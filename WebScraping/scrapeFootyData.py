@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+from tqdm import tqdm
 
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -161,21 +162,22 @@ def get_player_info(url, team_id):
     current_mv = bs.find_all("div", {"class":"tm-player-market-value-development__current-value"})
     for entry in current_mv:
         player_current_mv = entry.get_text()
-    player_info["current_mv"] = player_current_mv
+        player_info["current_mv"] = player_current_mv
 
     # max market value
     max_mv = bs.find_all("div", {"class":"tm-player-market-value-development__max-value"})
     for entry in max_mv:
         player_max_mv = entry.get_text()
-    player_info["max_mv"]= player_max_mv
+        player_info["max_mv"]= player_max_mv
     
     # position
     player_positions = []
     positions = bs.find_all("dd", {"class":"detail-position__position"})
     for position in positions:
         player_positions.append(position.get_text())
-    player_main_position = [player_positions[0]]
-    player_info["main_position"] = player_main_position
+    if len(player_positions)>0:
+        player_main_position = [player_positions[0]]
+        player_info["main_position"] = player_main_position
     if len(player_positions)>1: 
         player_other_positions = player_positions[1:]
         player_info["other_positions"] = player_other_positions
@@ -193,19 +195,34 @@ def get_player_info(url, team_id):
     player_info_df = pd.DataFrame(player_info)
     return player_info_df
 
-def load_players_info_for_team(team_url, base_url, team_name):
+def load_players_info_for_team(team_url, base_url):
     # combine the information derived from get_players and get_player_info
-    team_id = team_url.split('/')[-1]
-    print(team_id)
+    team_id = team_url.split('/')[6]
     df = get_players(team_url)
     additional_df = pd.DataFrame()
-    for href in df.player_href:
+    for href in tqdm(df['player_href'], total=len(df)):#df.player_href:
+        # print(f"Starting {list(df.player_href).index(href)+1}/{len(list(df.player_href))} - {datetime.datetime.now()}")
         href = base_url + href
         player_info_df = get_player_info(href, team_id)
         additional_df = pd.concat([additional_df, player_info_df], axis=0)
     df = pd.merge(df, additional_df, on="player_id", how="left")
-    df.to_csv(f'{team_name}.csv')
+    return df
 
+def get_players_for_all_teams(config, df):
+    # get the players for all teams in the league
+    players_df = pd.DataFrame()
+    for index, row in df.iterrows():
+        player_df=load_players_info_for_team(config.base_url + row.href, config.base_url)
+        players_df = pd.concat([players_df, player_df], axis=0)
+    print(players_df.columns)
+    if "Unnamed: 0" in players_df.columns:
+        players_df = players_df.drop("Unnamed: 0", axis=1)
+    columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
+    for column in columns_with_list_type:
+        players_df[column] = players_df[column].apply(lambda x: str(x))
+    subset = ["players", "player_href", "player_id"]
+    players_df = players_df.drop_duplicates(subset = "player_id").reset_index(drop=True)
+    return players_df
 
 if __name__ == "__main__":
     # league_url = "https://www.transfermarkt.de/bundesliga/startseite/wettbewerb/L1"
