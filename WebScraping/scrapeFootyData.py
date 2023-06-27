@@ -2,9 +2,24 @@ from urllib.request import urlopen, Request
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
+import sys
+import os
 
-def get_teams(url):
-    # exception handling
+# Add the project root directory to the Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+
+from Database.database import Database
+from Configuration import Configuration
+import datetime
+
+def get_teams(league_url, years, league_id):
+    '''Scrape team information for certain leagues and given years.'''
+    df = pd.DataFrame()
+    for year in years:
+        url = league_url + f"/plus/?saison_id={year}"
+
+        # exception handling
         r = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         html = urlopen(r)
         bs = BeautifulSoup(html, 'html.parser')
@@ -18,7 +33,53 @@ def get_teams(url):
             team_href = row.find('a')['href']
             team_id = team_href.split('/')[4]
             teams[team_name]={'href': team_href, 'id': team_id}
-        return teams
+        # TODO maybe also add the market value of the team
+        # turn into df
+        teams_df = pd.DataFrame.from_dict(teams, orient="index").reset_index(drop=False, names="team_name")
+        teams_df["year"] = year
+        teams_df["league_id"] = league_id
+        df = pd.concat([df, teams_df], axis=0)
+    return df
+
+def get_teams_all_leagues(config, start_year): 
+    league_urls = config.league_ids
+    years = [year for year in range(start_year,2023)]
+    combined_df = pd.DataFrame()
+    for league_url in league_urls.keys():
+        print(f"Starting {list(league_urls.keys()).index(league_url)+1}/{len(list(league_urls.keys()))} - {datetime.datetime.now()}")
+        df = get_teams(config.base_url + league_url, years, league_urls[league_url])
+        combined_df = pd.concat([df, combined_df], axis=0)
+        print(f"Finished {list(league_urls.keys()).index(league_url)+1}/{len(list(league_urls.keys()))} - {datetime.datetime.now()}")
+    return combined_df
+
+def add_all_historical_info_selected_teams(df):
+    '''This function adds team information for previously selected teams. 
+    So that teams that played in lower divisions are also accounted for.
+    df: combined_df i.e. the output of get_teams_all_leagues'''
+
+    # Extract existing ID-Year combinations
+    existing_combinations = set(zip(df['id'], df['year']))
+
+    # Create a list to store the updated table
+    updated_rows = df.values.tolist()
+
+    unique_ids = df.id.unique()
+    unique_years = df.year.unique()
+
+    # Iterate through all possible ID-Year-League combinations
+    for id in unique_ids:  
+        for year in unique_years:  
+            if (id, year) not in existing_combinations:
+                team_df = df.loc[df.id.isin([id]),:]
+                league_id = team_df["league_id"].unique()[0]
+                href = team_df["href"].unique()[0].split("/")[1]
+                href = f"/{href}/startseite/verein/{id}/saison_id/{year}"
+                team_name = team_df["team_name"].unique()[0]
+                new_entry = [team_name, href, id, year, league_id]  # Provide the appropriate values
+                updated_rows.append(new_entry)
+    # Create a new DataFrame with the updated table
+    updated_df = pd.DataFrame(updated_rows, columns=df.columns)
+    return updated_df
 
 def get_players(team_url):
     r = Request(team_url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -147,10 +208,20 @@ def load_players_info_for_team(team_url, base_url, team_name):
 
 
 if __name__ == "__main__":
-    #url = "https://www.transfermarkt.de/bundesliga/startseite/wettbewerb/L1.html"
-    base_url = "https://www.transfermarkt.com"
-    bremen = base_url + "/hertha-bsc/startseite/verein/44"
-    load_players_info_for_team(bremen, base_url, team_name="Hertha BSC")
+    # league_url = "https://www.transfermarkt.de/bundesliga/startseite/wettbewerb/L1"
+    config = Configuration()
+
+
+    df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv")
+    print(df)
+    updated_df = add_all_historical_info_selected_teams(df)
+    print(updated_df)
+    # unique_ids = df.id.unique()
+    # print(unique_ids)
+    # print([(id, df.loc[df.id.isin([id]), "team_name"].unique()) for id in unique_ids])
+    #load_players_info_for_team(bremen, base_url, team_name="SVWB")
+
+    # bremen = base_url + f"/sv-werder-bremen/startseite/verein/86/saison_id/{year}"
 
     '''    r = Request(bremen, headers={'User-Agent': 'Mozilla/5.0'})
     html = urlopen(r)
