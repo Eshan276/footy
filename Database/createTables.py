@@ -10,7 +10,7 @@ from http.client import IncompleteRead
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-
+from itertools import combinations
 from Database.database import Database
 from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams, get_players_for_all_teams
 from Configuration import Configuration
@@ -99,21 +99,52 @@ class createTables(): # alternatively fillTables
     def get_data_player_data():
         con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f"select * from data_player_table", con)
+        print(df.head())
         columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
         for col in columns_with_list_type:
-            if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
-                df.loc[df.other_positions=="nan","other_positions"] = str([])
+            #if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
+            df.loc[df[col]=="nan",col] = str([])
             df[col] = df[col].apply(ast.literal_eval)
         con.close()
         return df
+
+    def tic_tac_toe_logic(meta_teams_df, df):
+        # TODO make it faster
+
+        # -> try out for the players in db
+        # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
+        # disregard combinations with no players
+        df["club_ids"] = df["transfer_club_ids"] # df["current_club"] + df["transfer_club_ids"]
+        club_combinations = {}
+        club_ids = meta_teams_df.id.unique()[:5]
+        for club_id_1, club_id_2 in combinations(club_ids, 2):
+                # first iterate through all possible club_id combinations -> handling for retired club_id!
+                if (club_id_1 != club_id_2) & (club_id_1 != config.club_id_retired) & (club_id_2 != config.club_id_retired):
+                    club_1_mask = df.club_ids.apply(lambda x: club_id_1 in x)
+                    club_2_mask = df.club_ids.apply(lambda x: club_id_2 in x)
+                    player_ids = df.loc[club_1_mask & club_2_mask, 'player_id'].tolist()
+                    '''
+                    player_ids = []
+                    for index, row in df.iterrows():
+                        if (club_id_1 in row.club_ids) & (club_id_2 in row.club_ids):
+                            player_ids.append(row.player_id)
+                    combinations[(club_id_1, club_id_2)] = player_ids'''
+                    #print(df.loc[[club_id_1].isin(df.club_ids), "player_id"])
+                    #player_ids = list(df.loc[df.club_ids.isin([club_id_1]) & df.club_ids.isin([club_id_2]), "player_id"])
+                    if len(player_ids) > 0:
+                        club_combinations[(club_id_1, club_id_2)] = player_ids
+        # insert this table into the db
+        # make suggestions to increase the speed of this function
+        return club_combinations
 
 if __name__ == "__main__":
     config = Configuration()
     #df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
     #df = add_all_historical_info_selected_teams(df)
-    createTables.data_player_table(config)
-
-    # df = createTables.get_data_player_data()
+    # createTables.data_player_table(config)
+    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
+    df = createTables.get_data_player_data()
+    print(createTables.tic_tac_toe_logic(meta_teams_df, df))
     # print(df.transfer_club_ids[0])
     # print(np.unique(df.transfer_club_ids[0]))
     # print(df.loc[df.other_positions=="nan",:])

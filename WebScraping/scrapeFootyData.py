@@ -87,7 +87,20 @@ def get_players(team_url):
     html = urlopen(r)
     bs = BeautifulSoup(html, 'html.parser')
     # Get the team names
-    player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})
+    player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})# problem with index 2449
+    """
+    | 2449/4922 [1:24:16<1:25:05,  2.06s/it]
+    Traceback (most recent call last):
+    File "c:\Users\555ka\Coding\GIT-Projects\footy\Database\createTables.py", line 114, in <module>
+        # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
+    File "c:\Users\555ka\Coding\GIT-Projects\footy\Database\createTables.py", line 85, in data_player_table
+        df = get_players_for_all_teams(config, teams_df)
+    File "c:\Users\555ka\Coding\GIT-Projects\footy\WebScraping\scrapeFootyData.py", line 226, in get_players_for_all_teams
+        player_df = get_players(config.base_url + row.href)
+    File "c:\Users\555ka\Coding\GIT-Projects\footy\WebScraping\scrapeFootyData.py", line 90, in get_players
+        player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})
+    AttributeError: 'NoneType' object has no attribute 'find_all'"""
+    
     players = {}
     for row in player_rows:
         if "wechsel-kader-wappen" in row["class"]:# skip entries not linked to players
@@ -126,7 +139,7 @@ def get_player_info(url):
     
     player_info = {}
     player_info["player_id"] = url.split("/")[-1]
-    
+
     # Get the team names
     hrefs, transfer_years, club_ids = [], [], []
     grid = bs.find_all("div", {"class":"tm-player-transfer-history-grid"})
