@@ -95,8 +95,8 @@ def get_players(team_url):
         player_name = row.text
         player_href = row.find("a")["href"]
         player_id = player_href.split("/")[-1]
-        players[player_name] = {"player_href": player_href, "player_id":player_id}
-    
+        players[player_id] = {"player_href": player_href, "players":player_name}
+
     player_dates, player_numbers = [], []
     team_rows = bs.find('table', {'class': 'items'}).find_all('td', {"class":"zentriert"})
     for row in team_rows:
@@ -109,16 +109,16 @@ def get_players(team_url):
 
     # not ideal but add the dates and numbers based on their index position
     if len(players.keys()) == len(player_dates) & len(players.keys()) == len(player_numbers):
-        for player_name in players.keys():
-            players[player_name]["Birthday"] = player_dates[list(players.keys()).index(player_name)]
-            players[player_name]["Number"] = player_numbers[list(players.keys()).index(player_name)]
+        for player_id in players.keys():
+            players[player_id]["Birthday"] = player_dates[list(players.keys()).index(player_id)]
+            players[player_id]["Number"] = player_numbers[list(players.keys()).index(player_id)]
     else:
         print("Not matching dates and/or numbers")
     # Create a DataFrame from the dictionary
-    player_df = pd.DataFrame.from_dict(players, orient='index').reset_index(drop=False, names="players")
+    player_df = pd.DataFrame.from_dict(players, orient='index').reset_index(drop=False, names="player_id")
     return player_df
 
-def get_player_info(url, team_id):
+def get_player_info(url):
     # retrieves information from a players web site
     r = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     html = urlopen(r)
@@ -126,14 +126,7 @@ def get_player_info(url, team_id):
     
     player_info = {}
     player_info["player_id"] = url.split("/")[-1]
-    # age
-    '''
-    try:  
-        age = bs.find_all("div", {"class":"info-table info-table--right-space"})[0].find("span", {"class": "info-table__content info-table__content--bold"}).find("a").get_text()
-    except TypeError:
-            age = 
-    print(age)
-    '''
+    
     # Get the team names
     hrefs, transfer_years, club_ids = [], [], []
     grid = bs.find_all("div", {"class":"tm-player-transfer-history-grid"})
@@ -155,7 +148,21 @@ def get_player_info(url, team_id):
             club_ids.append(club_id)
     player_info["transfer_hrefs"] = hrefs
     player_info["transfer_years"] = transfer_years
-    club_ids.insert(0, team_id)
+
+    # current club id
+    current_club_id = []
+    for entry in grid:
+        old_club = entry.find("div", {"class":"tm-player-transfer-history-grid__new-club"})
+        if None == old_club: # handle None matches
+            continue
+        else:
+            if "grid__heading" in old_club["class"]:# exclude the header
+                continue
+            href = old_club.find("a")["href"]
+            club_id = href.split("/")[-3]
+            current_club_id.append(club_id)
+            break # stop after the first found element
+    player_info["current_club"] = current_club_id
     player_info["transfer_club_ids"] = club_ids
 
     # market value
@@ -191,6 +198,7 @@ def get_player_info(url, team_id):
             continue
         player_nations.append(nation["title"])
     player_info["nationality"] = player_nations
+
     player_info = {key: [value] for key, value in player_info.items()}
     player_info_df = pd.DataFrame(player_info)
     return player_info_df
@@ -199,8 +207,9 @@ def load_players_info_for_team(team_url, base_url):
     # combine the information derived from get_players and get_player_info
     team_id = team_url.split('/')[6]
     df = get_players(team_url)
+    # stop here and then continue with additional info
     additional_df = pd.DataFrame()
-    for href in tqdm(df['player_href'], total=len(df)):#df.player_href:
+    for href in df["player_href"]:#tqdm(df['player_href'], total=len(df)):#df.player_href:
         # print(f"Starting {list(df.player_href).index(href)+1}/{len(list(df.player_href))} - {datetime.datetime.now()}")
         href = base_url + href
         player_info_df = get_player_info(href, team_id)
@@ -211,28 +220,32 @@ def load_players_info_for_team(team_url, base_url):
 def get_players_for_all_teams(config, df):
     # get the players for all teams in the league
     players_df = pd.DataFrame()
-    for index, row in df.iterrows():
-        player_df=load_players_info_for_team(config.base_url + row.href, config.base_url)
+    for index, row in tqdm(df.iterrows(),total=len(df)):
+        # maybe dont include the additional info for players but only scrape the team site
+        # player_df=load_players_info_for_team(config.base_url + row.href, config.base_url)
+        player_df = get_players(config.base_url + row.href)
         players_df = pd.concat([players_df, player_df], axis=0)
-    print(players_df.columns)
     if "Unnamed: 0" in players_df.columns:
         players_df = players_df.drop("Unnamed: 0", axis=1)
+    '''
     columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
+    columns_with_list_type = [column for column in columns_with_list_type if column in players_df.columns]
     for column in columns_with_list_type:
         players_df[column] = players_df[column].apply(lambda x: str(x))
     subset = ["players", "player_href", "player_id"]
+    '''
     players_df = players_df.drop_duplicates(subset = "player_id").reset_index(drop=True)
     return players_df
 
 if __name__ == "__main__":
     # league_url = "https://www.transfermarkt.de/bundesliga/startseite/wettbewerb/L1"
     config = Configuration()
-
-
-    df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv")
+    df = get_player_info("https://www.transfermarkt.com/georgi-ivanov/profil/spieler/5678")
     print(df)
-    updated_df = add_all_historical_info_selected_teams(df)
-    print(updated_df)
+    # df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv")
+    # print(df)
+    #updated_df = add_all_historical_info_selected_teams(df)
+    #print(updated_df)
     # unique_ids = df.id.unique()
     # print(unique_ids)
     # print([(id, df.loc[df.id.isin([id]), "team_name"].unique()) for id in unique_ids])

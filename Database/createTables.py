@@ -4,7 +4,9 @@ import numpy as np
 import sys
 import os
 import ast
-import json
+import requests
+from requests.exceptions import ChunkedEncodingError, ConnectionError, ReadTimeout
+from http.client import IncompleteRead
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
@@ -75,9 +77,21 @@ class createTables(): # alternatively fillTables
         # query the data from all available teams
         teams_df = pd.read_sql_query(f"select * from data_club_table", con)
         # determine the unique player data for every team in teams_df
-        df = get_players_for_all_teams(config, teams_df)
-        # write the player data to the database
-        df.to_sql(name="data_player_table", con=con, if_exists="replace", index=False)
+        max_retries = 5
+        retry_count = 0
+        # todo it could be more efficient to first determine the unique players and then scrape the data for them
+        while retry_count < max_retries:
+            try:
+                df = get_players_for_all_teams(config, teams_df)
+                break
+            except (ChunkedEncodingError, ConnectionError, ReadTimeout, ValueError, IncompleteRead) as e:
+                retry_count += 1
+                print(f"Retry {retry_count}/{max_retries} - Error: {e}")
+            
+            except requests.exceptions.RequestException as e:
+                print(f"Error: {e}")
+                break  # Break the loop if an unrecoverable error occurs
+        df.to_sql(name="data_players_table", con=con, if_exists="replace", index=False)
         con.commit()
         cur.close()
         con.close()
@@ -97,11 +111,11 @@ if __name__ == "__main__":
     config = Configuration()
     #df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
     #df = add_all_historical_info_selected_teams(df)
-    #createTables.data_player_table(config)
+    createTables.data_player_table(config)
 
-    df = createTables.get_data_player_data()
-    print(df.transfer_club_ids[0])
-    print(np.unique(df.transfer_club_ids[0]))
+    # df = createTables.get_data_player_data()
+    # print(df.transfer_club_ids[0])
+    # print(np.unique(df.transfer_club_ids[0]))
     # print(df.loc[df.other_positions=="nan",:])
     #createTables.meta_clubs_table(config, df)
     #createTables.data_clubs_table(config, df)
