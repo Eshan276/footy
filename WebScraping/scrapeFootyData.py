@@ -87,48 +87,39 @@ def get_players(team_url):
     html = urlopen(r)
     bs = BeautifulSoup(html, 'html.parser')
     # Get the team names
-    player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})# problem with index 2449
-    """
-    | 2449/4922 [1:24:16<1:25:05,  2.06s/it]
-    Traceback (most recent call last):
-    File "c:\Users\555ka\Coding\GIT-Projects\footy\Database\createTables.py", line 114, in <module>
-        # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
-    File "c:\Users\555ka\Coding\GIT-Projects\footy\Database\createTables.py", line 85, in data_player_table
-        df = get_players_for_all_teams(config, teams_df)
-    File "c:\Users\555ka\Coding\GIT-Projects\footy\WebScraping\scrapeFootyData.py", line 226, in get_players_for_all_teams
-        player_df = get_players(config.base_url + row.href)
-    File "c:\Users\555ka\Coding\GIT-Projects\footy\WebScraping\scrapeFootyData.py", line 90, in get_players
-        player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})
-    AttributeError: 'NoneType' object has no attribute 'find_all'"""
-    
-    players = {}
-    for row in player_rows:
-        if "wechsel-kader-wappen" in row["class"]:# skip entries not linked to players
-            continue
-        player_name = row.text
-        player_href = row.find("a")["href"]
-        player_id = player_href.split("/")[-1]
-        players[player_id] = {"player_href": player_href, "players":player_name}
+    try:
+        player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})# problem with index 2449
+        players = {}
+        for row in player_rows:
+            if "wechsel-kader-wappen" in row["class"]:# skip entries not linked to players
+                continue
+            player_name = row.text
+            player_href = row.find("a")["href"]
+            player_id = player_href.split("/")[-1]
+            players[player_id] = {"player_href": player_href, "players":player_name}
 
-    player_dates, player_numbers = [], []
-    team_rows = bs.find('table', {'class': 'items'}).find_all('td', {"class":"zentriert"})
-    for row in team_rows:
-        if row.get_text()== '':
-            continue
-        elif len(row.get_text())>=3:
-            player_dates.append(row.get_text())
+        player_dates, player_numbers = [], []
+        team_rows = bs.find('table', {'class': 'items'}).find_all('td', {"class":"zentriert"})
+        for row in team_rows:
+            if row.get_text()== '':
+                continue
+            elif len(row.get_text())>=3:
+                player_dates.append(row.get_text())
+            else:
+                player_numbers.append(row.get_text())
+
+        # not ideal but add the dates and numbers based on their index position
+        if len(players.keys()) == len(player_dates) & len(players.keys()) == len(player_numbers):
+            for player_id in players.keys():
+                players[player_id]["Birthday"] = player_dates[list(players.keys()).index(player_id)]
+                players[player_id]["Number"] = player_numbers[list(players.keys()).index(player_id)]
         else:
-            player_numbers.append(row.get_text())
-
-    # not ideal but add the dates and numbers based on their index position
-    if len(players.keys()) == len(player_dates) & len(players.keys()) == len(player_numbers):
-        for player_id in players.keys():
-            players[player_id]["Birthday"] = player_dates[list(players.keys()).index(player_id)]
-            players[player_id]["Number"] = player_numbers[list(players.keys()).index(player_id)]
-    else:
-        print("Not matching dates and/or numbers")
-    # Create a DataFrame from the dictionary
-    player_df = pd.DataFrame.from_dict(players, orient='index').reset_index(drop=False, names="player_id")
+            print("Not matching dates and/or numbers")
+        # Create a DataFrame from the dictionary
+        player_df = pd.DataFrame.from_dict(players, orient='index').reset_index(drop=False, names="player_id")
+    except AttributeError:
+        print(f"No data for  {team_url}")
+        player_df = pd.DataFrame()
     return player_df
 
 def get_player_info(url):

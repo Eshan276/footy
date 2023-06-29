@@ -5,14 +5,16 @@ import sys
 import os
 import ast
 import requests
+from tqdm import tqdm
 from requests.exceptions import ChunkedEncodingError, ConnectionError, ReadTimeout
+from urllib.error import HTTPError
 from http.client import IncompleteRead
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from itertools import combinations
 from Database.database import Database
-from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams, get_players_for_all_teams
+from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams, get_players_for_all_teams, get_player_info
 from Configuration import Configuration
 import datetime
 
@@ -67,10 +69,6 @@ class createTables(): # alternatively fillTables
         cur.close()
         con.close()
 
-    # next implement the same structure for the player data
-    def meta_players_table():
-        pass
-
     def data_player_table(config):
         con = sqlite3.connect("Database/database.db")
         cur = con.cursor()
@@ -84,7 +82,7 @@ class createTables(): # alternatively fillTables
             try:
                 df = get_players_for_all_teams(config, teams_df)
                 break
-            except (ChunkedEncodingError, ConnectionError, ReadTimeout, ValueError, IncompleteRead) as e:
+            except (ChunkedEncodingError, ConnectionError, ReadTimeout, ValueError, IncompleteRead, HTTPError) as e:
                 retry_count += 1
                 print(f"Retry {retry_count}/{max_retries} - Error: {e}")
             
@@ -96,6 +94,21 @@ class createTables(): # alternatively fillTables
         cur.close()
         con.close()
     
+    def add_player_info_to_data_players_table(config):
+
+        con = sqlite3.connect("Database/database.db")
+        df = pd.read_sql_query(f"select * from data_players_table", con) 
+        additional_df = pd.DataFrame()
+        for url in tqdm(df.iloc[10000:20000,:].player_href, total=len(df.iloc[10000:20000,:])):
+            additional_df = pd.concat([additional_df, get_player_info(config.base_url + url)], axis=0)
+        df = pd.merge(df, additional_df, on="player_id", how="left")
+        # failed insertion... all types need to be formatted first...
+        df.to_sql(name="data_player_table", con=con, if_exists="append", index=False)
+        con.commit()
+        con.close()
+
+
+
     def get_data_player_data():
         con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f"select * from data_player_table", con)
@@ -109,8 +122,6 @@ class createTables(): # alternatively fillTables
         return df
 
     def tic_tac_toe_logic(meta_teams_df, df):
-        # TODO make it faster
-
         # -> try out for the players in db
         # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
         # disregard combinations with no players
@@ -123,18 +134,9 @@ class createTables(): # alternatively fillTables
                     club_1_mask = df.club_ids.apply(lambda x: club_id_1 in x)
                     club_2_mask = df.club_ids.apply(lambda x: club_id_2 in x)
                     player_ids = df.loc[club_1_mask & club_2_mask, 'player_id'].tolist()
-                    '''
-                    player_ids = []
-                    for index, row in df.iterrows():
-                        if (club_id_1 in row.club_ids) & (club_id_2 in row.club_ids):
-                            player_ids.append(row.player_id)
-                    combinations[(club_id_1, club_id_2)] = player_ids'''
-                    #print(df.loc[[club_id_1].isin(df.club_ids), "player_id"])
-                    #player_ids = list(df.loc[df.club_ids.isin([club_id_1]) & df.club_ids.isin([club_id_2]), "player_id"])
                     if len(player_ids) > 0:
                         club_combinations[(club_id_1, club_id_2)] = player_ids
-        # insert this table into the db
-        # make suggestions to increase the speed of this function
+        # insert this as a df into the db
         return club_combinations
 
 if __name__ == "__main__":
@@ -142,9 +144,19 @@ if __name__ == "__main__":
     #df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
     #df = add_all_historical_info_selected_teams(df)
     # createTables.data_player_table(config)
-    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
-    df = createTables.get_data_player_data()
-    print(createTables.tic_tac_toe_logic(meta_teams_df, df))
+
+    createTables.add_player_info_to_data_players_table(config)
+
+    # con = sqlite3.connect("Database/database.db")
+    # teams_df = pd.read_sql_query(f"select * from data_club_table", con)
+    # selection = [1299, 1327, 1692, 2298, 3014, 3828, 4061, 4665, 4690, 4743, 4752, 4786, 4834]
+    # print(teams_df.iloc[selection, :])
+    # teams_df = teams_df.iloc[selection, :]
+    # df = get_players_for_all_teams(config, teams_df)
+
+    # meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
+    # df = createTables.get_data_player_data()
+    # print(createTables.tic_tac_toe_logic(meta_teams_df, df))
     # print(df.transfer_club_ids[0])
     # print(np.unique(df.transfer_club_ids[0]))
     # print(df.loc[df.other_positions=="nan",:])
