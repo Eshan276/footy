@@ -99,10 +99,13 @@ class createTables(): # alternatively fillTables
         con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f"select * from data_players_table", con) 
         additional_df = pd.DataFrame()
-        for url in tqdm(df.iloc[10000:20000,:].player_href, total=len(df.iloc[10000:20000,:])):
+        for url in tqdm(df.iloc[30000:,:].player_href, total=len(df.iloc[30000:,:])):
             additional_df = pd.concat([additional_df, get_player_info(config.base_url + url)], axis=0)
-        df = pd.merge(df, additional_df, on="player_id", how="left")
-        # failed insertion... all types need to be formatted first...
+        df = pd.merge(df.loc[df.player_id.isin(additional_df.player_id), :], additional_df, on="player_id", how="left") 
+        columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality", "current_club"]
+        columns_with_list_type = [column for column in columns_with_list_type if column in df.columns]
+        for column in columns_with_list_type:
+            df[column] = df[column].apply(lambda x: str(x))
         df.to_sql(name="data_player_table", con=con, if_exists="append", index=False)
         con.commit()
         con.close()
@@ -145,7 +148,7 @@ if __name__ == "__main__":
     #df = add_all_historical_info_selected_teams(df)
     # createTables.data_player_table(config)
 
-    createTables.add_player_info_to_data_players_table(config)
+    # createTables.add_player_info_to_data_players_table(config)
 
     # con = sqlite3.connect("Database/database.db")
     # teams_df = pd.read_sql_query(f"select * from data_club_table", con)
