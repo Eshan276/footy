@@ -111,11 +111,9 @@ class createTables(): # alternatively fillTables
         con.close()
 
 
-
     def get_data_player_data():
         con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f"select * from data_player_table", con)
-        print(df.head())
         columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
         for col in columns_with_list_type:
             #if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
@@ -129,18 +127,26 @@ class createTables(): # alternatively fillTables
         # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
         # disregard combinations with no players
         df["club_ids"] = df["transfer_club_ids"] # df["current_club"] + df["transfer_club_ids"]
-        club_combinations = {}
-        club_ids = meta_teams_df.id.unique()[:5]
-        for club_id_1, club_id_2 in combinations(club_ids, 2):
+        club_combinations =[]
+        club_ids = meta_teams_df.id.unique()
+        for club_id_1, club_id_2 in tqdm(combinations(club_ids, 2), total=len(list(combinations(club_ids, 2)))):
                 # first iterate through all possible club_id combinations -> handling for retired club_id!
                 if (club_id_1 != club_id_2) & (club_id_1 != config.club_id_retired) & (club_id_2 != config.club_id_retired):
                     club_1_mask = df.club_ids.apply(lambda x: club_id_1 in x)
                     club_2_mask = df.club_ids.apply(lambda x: club_id_2 in x)
                     player_ids = df.loc[club_1_mask & club_2_mask, 'player_id'].tolist()
                     if len(player_ids) > 0:
-                        club_combinations[(club_id_1, club_id_2)] = player_ids
-        # insert this as a df into the db
-        return club_combinations
+                        club_combinations.append({'Club 1': club_id_1,
+                                                  'Club 2': club_id_2,
+                                                  'Player IDs': player_ids
+                                                  })
+        club_combinations_df = pd.DataFrame(club_combinations)
+        con = sqlite3.connect("Database/database.db")
+        club_combinations_df["Player IDs"] = club_combinations_df["Player IDs"].apply(lambda x: str(x))
+        club_combinations_df.to_sql(name="data_tic_tac_toe_table", con=con, if_exists="replace", index=False)
+        con.commit()
+        con.close()
+        return club_combinations_df
 
 if __name__ == "__main__":
     config = Configuration()
@@ -157,9 +163,9 @@ if __name__ == "__main__":
     # teams_df = teams_df.iloc[selection, :]
     # df = get_players_for_all_teams(config, teams_df)
 
-    # meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
-    # df = createTables.get_data_player_data()
-    # print(createTables.tic_tac_toe_logic(meta_teams_df, df))
+    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
+    df = createTables.get_data_player_data()
+    print(createTables.tic_tac_toe_logic(meta_teams_df, df))
     # print(df.transfer_club_ids[0])
     # print(np.unique(df.transfer_club_ids[0]))
     # print(df.loc[df.other_positions=="nan",:])
