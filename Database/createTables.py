@@ -110,7 +110,6 @@ class createTables(): # alternatively fillTables
         con.commit()
         con.close()
 
-
     def get_data_player_data():
         con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f"select * from data_player_table", con)
@@ -148,26 +147,93 @@ class createTables(): # alternatively fillTables
         con.close()
         return club_combinations_df
 
+    def insert_tic_tac_toe_combinations():
+        df = pd.read_sql_query(f"select * from data_tic_tac_toe_table", sqlite3.connect("Database/database.db"))
+        df["Club 1"] = df["Club 1"].astype(int)
+        df["Club 2"] = df["Club 2"].astype(int)
+        
+        unique_ids_1 = df["Club 1"].unique().tolist()
+        unique_ids_2 = df["Club 2"].unique().tolist()
+        unique_ids = unique_ids_1 + unique_ids_2
+        unique_ids = np.unique(unique_ids).tolist()
+        combinations_dict ={}
+        for id in unique_ids:
+            filter_index = (df["Club 2"].isin([id])) | (df["Club 1"].isin([id]))
+            club_combinations_1 = df.loc[filter_index,"Club 1"].unique().tolist()
+            club_combinations_2 = df.loc[filter_index,"Club 2"].unique().tolist()
+            club_combinations = club_combinations_1 + club_combinations_2
+            club_combinations = np.unique(club_combinations).tolist()
+            if id in club_combinations:
+                club_combinations.remove(id)
+            combinations_dict[id] = club_combinations
+
+        # determine all possible combinationsof 3 clubs
+        intersection_list, key_list= [], []
+        for key in tqdm(combinations(combinations_dict.keys(), 3), total=len(list(combinations(combinations_dict.keys(), 3)))):
+            id_1, id_2, id_3 = key[0], key[1], key[2]
+            intersection = set(combinations_dict[id_1]).intersection(combinations_dict[id_2], combinations_dict[id_3])
+            if len(intersection) > 2:
+                key_list.append(key)
+                intersection_list.append(intersection)
+        result_df = pd.DataFrame({"Axis 1": key_list, "Axis 2": intersection_list})
+        con = sqlite3.connect("Database/database.db")
+        result_df["Axis 1"]= result_df["Axis 1"].apply(lambda x: str(list(x)))
+        result_df["Axis 2"]= result_df["Axis 2"].apply(lambda x: str(list(x)))
+        result_df.to_sql(name="data_tic_tac_toe_combinations", con=con, if_exists="replace", index=False)
+        con.commit()
+        con.close()
+    
+    def get_tic_tac_toe_combinations():
+        df = pd.read_sql_query(f"select * from data_tic_tac_toe_combinations", sqlite3.connect("Database/database.db"))
+        print(datetime.datetime.now())
+        # df = df.iloc[2:1000]
+        df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
+        df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
+        print(8)
+        con = sqlite3.connect("Database/database.db")
+        cur = con.cursor()
+
+        # Enable SQLite write-ahead logging and turn off auto-commit
+        cur.execute("PRAGMA journal_mode = WAL")
+        
+        # Set synchronous mode outside the transaction
+        cur.execute("PRAGMA synchronous = OFF")
+        
+        cur.execute("BEGIN TRANSACTION")
+
+        try:
+            cur.execute("DELETE FROM tic_tac_toe_combinations")
+            values = []
+            for index, row in tqdm(df.iterrows(), total=len(df)):
+                combination = list(combinations(row["Axis 2"], 3))
+                values.extend([(str(list(row["Axis 1"])), str(combinatio)) for combinatio in combination])
+                if index % 1000 == 0:
+                    cur.executemany("INSERT INTO tic_tac_toe_combinations VALUES (?, ?)", values)
+                    values = []
+            
+            # Insert any remaining values
+            if values:
+                cur.executemany("INSERT INTO tic_tac_toe_combinations VALUES (?, ?)", values)
+
+            con.commit()
+        except:
+            con.rollback()
+            raise
+        finally:
+            con.close()
+
 if __name__ == "__main__":
     config = Configuration()
-    #df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv") or select with db connection, but for insertion this step is probably not needed
-    #df = add_all_historical_info_selected_teams(df)
-    # createTables.data_player_table(config)
-
-    # createTables.add_player_info_to_data_players_table(config)
-
-    # con = sqlite3.connect("Database/database.db")
-    # teams_df = pd.read_sql_query(f"select * from data_club_table", con)
-    # selection = [1299, 1327, 1692, 2298, 3014, 3828, 4061, 4665, 4690, 4743, 4752, 4786, 4834]
-    # print(teams_df.iloc[selection, :])
-    # teams_df = teams_df.iloc[selection, :]
-    # df = get_players_for_all_teams(config, teams_df)
-
-    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
-    df = createTables.get_data_player_data()
-    print(createTables.tic_tac_toe_logic(meta_teams_df, df))
-    # print(df.transfer_club_ids[0])
-    # print(np.unique(df.transfer_club_ids[0]))
-    # print(df.loc[df.other_positions=="nan",:])
-    #createTables.meta_clubs_table(config, df)
-    #createTables.data_clubs_table(config, df)
+    con = sqlite3.connect("Database/database.db")
+    cur = con.cursor()
+    # insert the df as a 
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS tic_tac_toe_combinations(
+    email TEXT PRIMARY KEY);
+    """)
+    con.commit()
+    cur.close()
+    con.close()
+    createTables.get_tic_tac_toe_combinations()
+    # print(df.head())
+    # print(df.explode("Axis 2"))
