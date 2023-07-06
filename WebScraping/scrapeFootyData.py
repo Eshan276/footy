@@ -9,8 +9,6 @@ from tqdm import tqdm
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
-
-from Database.database import Database
 from Configuration import Configuration
 import datetime
 
