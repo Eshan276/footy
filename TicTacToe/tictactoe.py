@@ -54,8 +54,6 @@ class TicTacToe:
         # TODO also randomly swap between the two axes or do it later in the implementation phase
         combinations_df = pd.DataFrame(columns=["Axis1", "Axis2"])
         for indexer in range(0, len(df)):
-
-            
             combination = list(combinations(df.iloc[indexer]["Axis 2"], 3))
             number = random.randint(0,len(combination)-1)
             combinations_df = pd.concat([combinations_df, pd.DataFrame({"Axis1":[combination[number]],"Axis2": [df.iloc[indexer]["Axis 1"]]})], axis=0)

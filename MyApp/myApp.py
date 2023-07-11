@@ -1,15 +1,62 @@
-from kivy.app import App
-from kivy.uix.widget import Widget
+from kivy.lang import Builder
+from kivymd.app import MDApp
 
+class MyApp(MDApp):
+	def build(self):
+		self.theme_cls.theme_style = "Dark"
+		self.theme_cls.primary_palette = "BlueGray"
+		return Builder.load_file('my.kv')
+	
+	# Define Who's turn it is
+	turn = "X"
+	
 
-class PongGame(Widget):
-    pass
+	
 
+	def presser(self, btn):
+		if self.turn == 'X':
+			btn.text = "X"
+			btn.disabled = True
+			self.root.ids.score.text = "O's Turn!"
+			self.turn = "O"
+		else:
+			btn.text = "O"
+			btn.disabled = True
+			self.root.ids.score.text = "X's Turn!"
+			self.turn = "X"
 
-class myApp(App):
-    def build(self):
-        return PongGame()
+		# Check To See if won
+		self.win()
 
+	def restart(self):
+		# Reset Who's Turn It Is
+		self.turn = "X"
+
+		# Enable The Buttons
+		self.root.ids.btn1.disabled = False
+		self.root.ids.btn2.disabled = False
+		self.root.ids.btn3.disabled = False
+		self.root.ids.btn4.disabled = False
+		self.root.ids.btn5.disabled = False
+		self.root.ids.btn6.disabled = False
+		self.root.ids.btn7.disabled = False
+		self.root.ids.btn8.disabled = False
+		self.root.ids.btn9.disabled = False
+
+		# Clear The Buttons
+		self.root.ids.btn1.text = ""
+		self.root.ids.btn2.text = ""
+		self.root.ids.btn3.text = ""
+		self.root.ids.btn4.text = ""
+		self.root.ids.btn5.text = ""
+		self.root.ids.btn6.text = ""
+		self.root.ids.btn7.text = ""
+		self.root.ids.btn8.text = ""
+		self.root.ids.btn9.text = ""
+
+		
+		# Reset The Score Label
+		self.root.ids.score.text = "X GOES FIRST!"
 
 if __name__ == '__main__':
-    myApp().run()
+    MyApp().run()

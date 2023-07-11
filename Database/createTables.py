@@ -17,7 +17,7 @@ from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historica
 from Configuration import Configuration
 import datetime
 
-class createTables(): # alternatively fillTables
+class createTables: # alternatively fillTables
     def create_meta_clubs_table(config, df, start_year=2000):
         
         
@@ -108,17 +108,6 @@ class createTables(): # alternatively fillTables
         df.to_sql(name="data_player_table", con=con, if_exists="append", index=False)
         con.commit()
         con.close()
-
-    def get_data_player_data():
-        con = sqlite3.connect("Database/database.db")
-        df = pd.read_sql_query(f"select * from data_player_table", con)
-        columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
-        for col in columns_with_list_type:
-            #if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
-            df.loc[df[col]=="nan",col] = str([])
-            df[col] = df[col].apply(ast.literal_eval)
-        con.close()
-        return df
 
     def create_data_tic_tac_toe_table(meta_teams_df, df):
         # -> try out for the players in db
