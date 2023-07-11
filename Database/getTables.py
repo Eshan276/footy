@@ -1,0 +1,49 @@
+import sqlite3
+import pandas as pd
+import ast
+
+
+
+class getTables:
+    def __init__(self):
+        self.con = sqlite3.connect("Database/database.db")
+        self.cur = self.con.cursor()
+
+    def get_data_player_data(self):
+        df = pd.read_sql_query(f"select * from data_player_table", self.con)
+        columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
+        for col in columns_with_list_type:
+            #if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
+            df.loc[df[col]=="nan",col] = str([])
+            df[col] = df[col].apply(ast.literal_eval)
+        self.con.close()
+        return df
+    
+    def select_base(self, team_ids=None, league_ids=None):
+        if team_ids != None: # maybe also include a check if a certain row matches a given list of 6 teams exactly
+            sql = """SELECT *
+                FROM tic_tac_toe_combinations
+                WHERE
+                    (
+                        -- Check if any element in Axis 1 exactly matches the desired elements
+                        {axis1_condition} AND
+                        -- Check if any element in Axis 2 exactly matches the desired elements
+                        {axis2_condition}
+                    )"""
+            
+            axis1_conditions = " OR ".join([f'"Axis 1" LIKE \'% {element},%\' OR "Axis 1" LIKE \'% {element}]%\' OR "Axis 1" LIKE \'[{element},%\' OR "Axis 1" LIKE \'[{element}]%\' OR "Axis 1" LIKE \'% {element} ]\' OR "Axis 1" LIKE \'% {element} ,\' OR "Axis 1" = \'{element}\''
+                                        for element in team_ids])
+            axis2_conditions = " OR ".join([f'"Axis 2" LIKE \'% {element},%\' OR "Axis 2" LIKE \'% {element}]%\' OR "Axis 2" LIKE \'[{element},%\' OR "Axis 2" LIKE \'[{element}]%\' OR "Axis 2" LIKE \'% {element} ]\' OR "Axis 2" LIKE \'% {element} ,\' OR "Axis 2" = \'{element}\''
+                                        for element in team_ids])
+            
+            formatted_sql = sql.format(axis1_condition=axis1_conditions, axis2_condition=axis2_conditions)
+        if league_ids != None: # make exclusive leagues and possible intersection only between 2 leagues? -> possible via team_ids
+            sql = """SELECT *
+                    FROM tic_tac_toe_combinations
+                    WHERE "League ID" IN ({league_ids})"""
+            
+            league_ids_condition = ", ".join(str(league_id) for league_id in league_ids)
+            formatted_sql = sql.format(league_ids=league_ids_condition)
+        df = pd.read_sql_query(formatted_sql, self.con)
+        self.con.close()
+        return df
