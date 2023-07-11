@@ -3,15 +3,16 @@ import random
 import pandas as pd
 import ast
 from itertools import combinations
+from Database.getTables import getTables
 
-class TicTacToe():
+class TicTacToe:
     def __init__(self):
         pass
-    def roll_combinations(league_id=None, num_random_numbers=50):
+
+    def roll_combinations(league_id=None, num_random_numbers=50, team_ids=None):
         '''Create a dict of [num_random_numbers] of random combinations for a tic tac toe grid. 
-        (If wanted the selection choices can be reduced to a certain league)
         '''
-        df = pd.read_sql_query(f"select * from tic_tac_toe_combinations", sqlite3.connect("Database/database.db"))
+        df = getTables.select_base(team_ids=team_ids, league_ids=[league_id])
         # filter out combinations for a certain league -> create dummy in data_tic-tac-toe_combinations
         # team_df = pd.read_sql_query(f"select * from data_teams where league = '{league}'", sqlite3.connect("Database/database.db"))
         if league_id != None:
@@ -35,6 +36,9 @@ class TicTacToe():
             combinations_dict[str(df.iloc[indexer]["Axis 1"])] = combination[number]
         return combinations_dict
 
+    
+
 
 if __name__ == '__main__':
-    TicTacToe.roll_combinations(league_id = 1)
+    # TicTacToe.select_base(league_ids=[1])
+    TicTacToe.roll_combinations(league_id = [1])
