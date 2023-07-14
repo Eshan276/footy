@@ -13,15 +13,17 @@ from Configuration import Configuration
 
 class TicTacToe:
     def __init__(self):
-        pass
+        # get team_df
+        self.meta_teams_df = pd.read_sql_query("Select * from meta_club_table", sqlite3.connect("Database/database.db"))
 
-    def roll_combinations(league_ids=None, num_random_numbers=50, team_ids=None):
+    def roll_combinations(self, league_ids=None, num_random_numbers=50, team_ids=None):
         '''
         Create a dict of [num_random_numbers] of random combinations for a tic tac toe grid. 
         '''
         # select the team_ids of the teams for the given leagues
         gT = getTables()
         if league_ids != None:
+            # TODO maybe no need to load Configuration instead use self.meta_teams_df
             config = Configuration()
             team_ids = [id for league_id in league_ids for id in config.team_ids[league_id]]
             '''OLD IMPLEMENTATION -> requires database connection.
@@ -57,12 +59,19 @@ class TicTacToe:
             combination = list(combinations(df.iloc[indexer]["Axis 2"], 3))
             number = random.randint(0,len(combination)-1)
             combinations_df = pd.concat([combinations_df, pd.DataFrame({"Axis1":[combination[number]],"Axis2": [df.iloc[indexer]["Axis 1"]]})], axis=0)
-        return combinations_df.reset_index(drop=True)
+        return self.getNamesForCombinations(combinations_df.reset_index(drop=True))
 
-    def getNamesForCombinations():
+    def getNamesForCombinations(self, df): #return the team names for a combination
+        df["TeamsAxis1"] = df["Axis1"].apply(lambda x: [str(self.meta_teams_df.loc[self.meta_teams_df.id == str(i), "team_name"].values[0]) for i in x])
+        df["TeamsAxis2"] = df["Axis2"].apply(lambda x: [str(self.meta_teams_df.loc[self.meta_teams_df.id == str(i), "team_name"].values[0]) for i in x])
+        return df
+
+    def get_correct_players(): # return the correct players
         pass
 
 
 if __name__ == '__main__':
     # TicTacToe.select_base(league_ids=[1])
-    print(TicTacToe.roll_combinations(league_ids = [1, 5]))
+    t = TicTacToe()
+    df = t.roll_combinations(league_ids = [1, 5])
+    print(df)

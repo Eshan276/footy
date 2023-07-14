@@ -1,10 +1,57 @@
 MDFloatLayout:
+	MDTextField:
+		size_hint: .3, .1
+		pos_hint: {'center_x': .5, 'center_y': .9}
+		id: search_field
+		hint_text: 'Search player'
+		on_text: app.get_matching_player_names(self.text)
+
+	MDLabel:
+		id: labell
+
+	MDRaisedButton:
+		id : reroll_combinations
+		text : "Reroll teams"
+		font_size: "20sp"
+		size_hint: .25, .1
+		pos_hint: {'center_x': .5, 'center_y': .15}
+		on_release: app.next_combination()
 
 	MDGridLayout:
 		size_hint: .5, .5
-		pos_hint: {'center_x': .5, 'center_y': .7}
-		cols: 3
-		rows: 3
+		pos_hint: {'center_x': .4375, 'center_y': .6}
+		cols: 4
+		rows: 4
+
+		MDLabel:
+			id: lab0
+			text: ""
+			font_size: "45sp"
+			halign : "center"
+
+		MDLabel:
+			id: lab1
+			text: app.team1_name
+			font_size: "20sp"
+			halign : "center"
+
+		MDLabel:
+			id: lab2
+			text: app.team2_name
+			font_size: "20sp"
+			halign : "center"
+
+		MDLabel:
+			id: lab3
+			text: app.team3_name
+			font_size: "20sp"
+			halign : "center"
+
+		MDLabel:
+			id: lab4
+			text: app.team4_name
+			font_size: "20sp"
+			halign : "center"
 
 		Button:
 			id: btn1
@@ -24,6 +71,13 @@ MDFloatLayout:
 			font_size: "45sp"
 			on_release: app.presser(btn3)
 
+
+		MDLabel:
+			id: lab5
+			text: app.team5_name
+			font_size: "20sp"
+			halign : "center"
+
 		Button:
 			id: btn4
 			text: ""
@@ -40,7 +94,14 @@ MDFloatLayout:
 			id: btn6
 			text: ""
 			font_size: "45sp"
-			on_release: app.presser(btn6)
+			on_release: app.presser(btn6)			
+
+		MDLabel:
+			id: lab6
+			text: app.team6_name
+			font_size: "20sp"
+			halign : "center"
+
 
 		Button:
 			id: btn7
@@ -60,15 +121,10 @@ MDFloatLayout:
 			font_size: "45sp"
 			on_release: app.presser(btn9)
 
-	MDLabel:
-		id: score
-		font_size: "32sp"
-		text: "X GOES FIRST!"
-		halign: "center"
-		pos_hint: {"center_y": .3}
 
-	MDRaisedButton:
-		id: restart
-		text: "Restart The Game"
-		pos_hint: {'center_x': .5, 'center_y': .15}
-		on_release: app.restart()
+	MDLabel:
+		id: game
+		font_size: "14sp"
+		text: "X Wins: 0  |  O Wins: 0"
+		halign: "center"
+		pos_hint: {"center_x": .5, "center_y": .05}	
