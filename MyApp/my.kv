@@ -1,130 +1,139 @@
-MDFloatLayout:
-	MDTextField:
-		size_hint: .3, .1
-		pos_hint: {'center_x': .5, 'center_y': .9}
-		id: search_field
-		hint_text: 'Search player'
-		on_text: app.get_matching_player_names(self.text)
-
-	MDLabel:
-		id: labell
-
-	MDRaisedButton:
-		id : reroll_combinations
-		text : "Reroll teams"
-		font_size: "20sp"
-		size_hint: .25, .1
-		pos_hint: {'center_x': .5, 'center_y': .15}
-		on_release: app.next_combination()
-
-	MDGridLayout:
-		size_hint: .5, .5
-		pos_hint: {'center_x': .4375, 'center_y': .6}
-		cols: 4
-		rows: 4
+<TicTacToeScreen>:
+	MDFloatLayout:
+		MDTextField:
+			size_hint: .3, .1
+			pos_hint: {'center_x': .5, 'center_y': .9}
+			id: search_field
+			hint_text: 'Search player'
+			on_text: root.on_text(self, self.text)
 
 		MDLabel:
-			id: lab0
-			text: ""
-			font_size: "45sp"
-			halign : "center"
+			id: labell
+			
 
-		MDLabel:
-			id: lab1
-			text: app.team1_name
+		MDRaisedButton:
+			id : reroll_combinations
+			text : "Reroll teams"
 			font_size: "20sp"
-			halign : "center"
+			size_hint: .25, .1
+			pos_hint: {'center_x': .5, 'center_y': .15}
+			on_release: root.next_combination()
+
+		MDGridLayout:
+			size_hint: .5, .5
+			pos_hint: {'center_x': .4375, 'center_y': .6}
+			cols: 4
+			rows: 4
+
+			MDLabel:
+				id: lab0
+				text: ""
+				font_size: "45sp"
+				halign : "center"
+
+			MDLabel:
+				id: lab1
+				text: root.team1_name
+				font_size: "20sp"
+				halign : "center"
+
+			MDLabel:
+				id: lab2
+				text: root.team2_name
+				font_size: "20sp"
+				halign : "center"
+
+			MDLabel:
+				id: lab3
+				text: root.team3_name
+				font_size: "20sp"
+				halign : "center"
+
+			MDLabel:
+				id: lab4
+				text: root.team4_name
+				font_size: "20sp"
+				halign : "center"
+
+			Button:
+				id: btn1
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn1)
+
+			Button:
+				id: btn2
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn2)
+
+			Button:
+				id: btn3
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn3)
+
+
+			MDLabel:
+				id: lab5
+				text: root.team5_name
+				font_size: "20sp"
+				halign : "center"
+
+			Button:
+				id: btn4
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn4)
+
+			Button:
+				id: btn5
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn5)
+
+			Button:
+				id: btn6
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn6)			
+
+			MDLabel:
+				id: lab6
+				text: root.team6_name
+				font_size: "20sp"
+				halign : "center"
+
+
+			Button:
+				id: btn7
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn7)
+
+			Button:
+				id: btn8
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn8)
+
+			Button:
+				id: btn9
+				text: ""
+				font_size: "45sp"
+				on_release: root.presser(btn9)
+
 
 		MDLabel:
-			id: lab2
-			text: app.team2_name
-			font_size: "20sp"
-			halign : "center"
-
-		MDLabel:
-			id: lab3
-			text: app.team3_name
-			font_size: "20sp"
-			halign : "center"
-
-		MDLabel:
-			id: lab4
-			text: app.team4_name
-			font_size: "20sp"
-			halign : "center"
-
+			id: game
+			font_size: "14sp"
+			text: "X Wins: 0  |  O Wins: 0"
+			halign: "center"
+			pos_hint: {"center_x": .5, "center_y": .05}	
+		
 		Button:
-			id: btn1
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn1)
-
-		Button:
-			id: btn2
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn2)
-
-		Button:
-			id: btn3
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn3)
-
-
-		MDLabel:
-			id: lab5
-			text: app.team5_name
-			font_size: "20sp"
-			halign : "center"
-
-		Button:
-			id: btn4
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn4)
-
-		Button:
-			id: btn5
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn5)
-
-		Button:
-			id: btn6
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn6)			
-
-		MDLabel:
-			id: lab6
-			text: app.team6_name
-			font_size: "20sp"
-			halign : "center"
-
-
-		Button:
-			id: btn7
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn7)
-
-		Button:
-			id: btn8
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn8)
-
-		Button:
-			id: btn9
-			text: ""
-			font_size: "45sp"
-			on_release: app.presser(btn9)
-
-
-	MDLabel:
-		id: game
-		font_size: "14sp"
-		text: "X Wins: 0  |  O Wins: 0"
-		halign: "center"
-		pos_hint: {"center_x": .5, "center_y": .05}	
+			text: "switch_view"
+			size_hint: .1, .1
+			pos_hint: {"center_x": .7, "center_y": .05}	
+			font_size: "12sp"
+			on_press: root.manager.current = "lists"

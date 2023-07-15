@@ -9,7 +9,7 @@ class getTables:
         self.con = sqlite3.connect("Database/database.db")
         self.cur = self.con.cursor()
 
-    def get_data_player_data(self):
+    def get_player_data(self):
         df = pd.read_sql_query(f"select * from data_player_table", self.con)
         columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
         for col in columns_with_list_type:
@@ -47,3 +47,17 @@ class getTables:
         df = pd.read_sql_query(formatted_sql, self.con)
         self.con.close()
         return df
+    
+    def get_combination_results(self, team_id_1, team_id_2):
+        self.con = sqlite3.connect("Database/database.db")
+        df = pd.read_sql_query(f'select * from data_tic_tac_toe_table where "Club 1" in ({team_id_1}) and "Club 2" in ({team_id_2})', self.con)
+        df["Player IDs"] = df["Player IDs"].apply(ast.literal_eval)
+        self.con.close()
+        return df
+
+if __name__ == "__main__":
+    t = getTables()
+    df = t.get_combination_results(583, 1041)
+    print(df["Player IDs"][0])
+    if str(3964) in df["Player IDs"][0]:
+        print(True)
