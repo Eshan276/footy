@@ -1,7 +1,11 @@
 import sqlite3
 import pandas as pd
 import ast
-
+import sys
+import os
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(project_root)
+from Configuration import Configuration
 
 
 class getTables:
@@ -11,7 +15,7 @@ class getTables:
 
     def get_player_data(self):
         df = pd.read_sql_query(f"select * from data_player_table", self.con)
-        columns_with_list_type = ["transfer_years", "transfer_hrefs", "transfer_club_ids", "main_position", "other_positions", "nationality"]
+        columns_with_list_type = ["transfer_years", "transfer_hrefs", "current_club", "transfer_club_ids", "main_position", "other_positions", "nationality"]
         for col in columns_with_list_type:
             #if col == "other_positions": # TODO maybe check more genereally for all columns that contain nan
             df.loc[df[col]=="nan",col] = str([])
@@ -20,7 +24,8 @@ class getTables:
         return df
     
     def select_base(self, team_ids=None, league_ids=None):
-        if team_ids != None: # maybe also include a check if a certain row matches a given list of 6 teams exactly
+
+        if team_ids != None: 
             sql = """SELECT *
                 FROM tic_tac_toe_combinations
                 WHERE
@@ -50,14 +55,17 @@ class getTables:
     
     def get_combination_results(self, team_id_1, team_id_2):
         self.con = sqlite3.connect("Database/database.db")
-        df = pd.read_sql_query(f'select * from data_tic_tac_toe_table where "Club 1" in ({team_id_1}) and "Club 2" in ({team_id_2})', self.con)
+        df = pd.read_sql_query(f'select * from data_tic_tac_toe_table where ("Club 1" in ({team_id_1}) and "Club 2" in ({team_id_2})) or ("Club 1" in ({team_id_2}) and "Club 2" in ({team_id_1}))', self.con)
         df["Player IDs"] = df["Player IDs"].apply(ast.literal_eval)
         self.con.close()
         return df
 
 if __name__ == "__main__":
     t = getTables()
-    df = t.get_combination_results(583, 1041)
+    config = Configuration()
+    df = t.select_base(team_ids=config.top_teams, league_ids=None)
+    print(df)
+    '''df = t.get_combination_results(583, 1041)
     print(df["Player IDs"][0])
     if str(3964) in df["Player IDs"][0]:
-        print(True)
+        print(True)'''

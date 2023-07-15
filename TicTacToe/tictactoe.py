@@ -16,7 +16,7 @@ class TicTacToe:
         # get team_df
         self.meta_teams_df = pd.read_sql_query("Select * from meta_club_table", sqlite3.connect("Database/database.db"))
 
-    def roll_combinations(self, league_ids=None, num_random_numbers=50, team_ids=None):
+    def roll_combinations(self, league_ids=None, num_random_numbers=50, team_ids=None, exact=False):
         '''
         Create a dict of [num_random_numbers] of random combinations for a tic tac toe grid. 
         '''
@@ -26,32 +26,28 @@ class TicTacToe:
             # TODO maybe no need to load Configuration instead use self.meta_teams_df
             config = Configuration()
             team_ids = [id for league_id in league_ids for id in config.team_ids[league_id]]
-            '''OLD IMPLEMENTATION -> requires database connection.
-            
-            con = sqlite3.connect("Database/database.db")
-            sql = """SELECT *
-            FROM meta_club_table
-            WHERE league_id IN ({league_ids})"""
-            league_ids_condition = ", ".join(str(league_id) for league_id in league_ids)
-            team_df = pd.read_sql_query(sql.format(league_ids=league_ids_condition), con)
-            team_ids = team_df["id"].astype(int).unique().tolist()
-            con.close()'''
             df = getTables.select_base(gT, team_ids=None, league_ids=league_ids)
         else:
             df = getTables.select_base(gT, team_ids=team_ids, league_ids=None)
             # TODO maybe include a filter to eclusively select the teams e.g. only those teams are on both axes and no other
-        
+        if (team_ids!=None) & (exact==True):
+            df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
+            df["Axis 1"] = df["Axis 1"].apply(lambda x: [i for i in x if i in team_ids])
+            df = df.loc[df["Axis 1"].apply(len) > 2].reset_index(drop=True)
+            df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
+            df["Axis 2"] = df["Axis 2"].apply(lambda x: [i for i in x if i in team_ids])
+            df = df.loc[df["Axis 2"].apply(len) > 2].reset_index(drop=True)
         # randomly generate the indexes of the df rows to determine the combinations
         random_numbers = [random.randint(0, len(df) - 1) for _ in range(num_random_numbers)]
         df = df.iloc[random_numbers].reset_index(drop=True)
-        # transform the string elements of the columns to lists
-        df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
-        df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
-
+        if ((team_ids==None) | (exact==False)):
+            # transform the string elements of the columns to lists
+            df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
+            df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
         if league_ids != None: 
             # if a league is picked then axis 1 is automatically restricted to teams from the league
             # therefore also limit axis 2 to teams from that league
-            df["Axis 2"] = df["Axis 2"].apply(lambda x: [i for i in x if i in team_ids])
+            df["Axis 2"] = df["Axis 2"].apply(lambda x: [i for i in x if i in team_ids if len(set(team_ids).intersection(set(x)))>2])
         # randomly draw the combinations 
         # TODO also randomly swap between the two axes or do it later in the implementation phase
         combinations_df = pd.DataFrame(columns=["Axis1", "Axis2"])
@@ -66,12 +62,9 @@ class TicTacToe:
         df["TeamsAxis2"] = df["Axis2"].apply(lambda x: [str(self.meta_teams_df.loc[self.meta_teams_df.id == str(i), "team_name"].values[0]) for i in x])
         return df
 
-    def get_correct_players(): # return the correct players
-        pass
-
-
 if __name__ == '__main__':
     # TicTacToe.select_base(league_ids=[1])
+    config = Configuration()
     t = TicTacToe()
-    df = t.roll_combinations(league_ids = [1, 5])
+    df = t.roll_combinations(team_ids=config.top_teams, exact=True)
     print(df)

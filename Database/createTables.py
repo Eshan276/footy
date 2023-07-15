@@ -13,11 +13,13 @@ from http.client import IncompleteRead
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 from itertools import combinations
+from getTables import getTables
 from WebScraping.scrapeFootyData import get_teams_all_leagues, add_all_historical_info_selected_teams, get_players_for_all_teams, get_player_info
 from Configuration import Configuration
 import datetime
 
 class createTables: # alternatively fillTables
+    
     def create_meta_clubs_table(config, df, start_year=2000):
         
         
@@ -110,10 +112,12 @@ class createTables: # alternatively fillTables
         con.close()
 
     def create_data_tic_tac_toe_table(meta_teams_df, df):
+        # This function takes about 10 minutes
+
         # -> try out for the players in db
         # then check which players played for both clubs and save their player_ids as list of length 2 into a /dict
         # disregard combinations with no players
-        df["club_ids"] = df["transfer_club_ids"] # df["current_club"] + df["transfer_club_ids"]
+        df["club_ids"] = df["current_club"] + df["transfer_club_ids"]
         club_combinations =[]
         club_ids = meta_teams_df.id.unique()
         for club_id_1, club_id_2 in tqdm(combinations(club_ids, 2), total=len(list(combinations(club_ids, 2)))):
@@ -167,57 +171,16 @@ class createTables: # alternatively fillTables
         con = sqlite3.connect("Database/database.db")
         result_df["Axis 1"]= result_df["Axis 1"].apply(lambda x: str(list(x)))
         result_df["Axis 2"]= result_df["Axis 2"].apply(lambda x: str(list(x)))
-        result_df.to_sql(name="data_tic_tac_toe_combinations", con=con, if_exists="replace", index=False)
+        result_df.to_sql(name="tic_tac_toe_combinations", con=con, if_exists="replace", index=False)
         con.commit()
-        con.close()
+        con.close()   
     
-    def create_all_possible_tic_tac_toe_combinations():
-        '''Not Incorporated to the db, instead TicTacToe.rolling_combinations() is used during the runtime of the program'''
-
-        df = pd.read_sql_query(f"select * from data_tic_tac_toe_combinations", sqlite3.connect("Database/database.db"))
-        print(datetime.datetime.now())
-        # df = df.iloc[2:1000]
-        df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
-        df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
-        print(8)
-        con = sqlite3.connect("Database/database.db")
-        cur = con.cursor()
-
-        # Enable SQLite write-ahead logging and turn off auto-commit
-        cur.execute("PRAGMA journal_mode = WAL")
-        
-        # Set synchronous mode outside the transaction
-        cur.execute("PRAGMA synchronous = OFF")
-        
-        cur.execute("BEGIN TRANSACTION")
-
-        try:
-            cur.execute("DELETE FROM tic_tac_toe_combinations")
-            values = []
-            for index, row in tqdm(df.iterrows(), total=len(df)):
-                combination = list(combinations(row["Axis 2"], 3))
-                values.extend([(str(list(row["Axis 1"])), str(combinatio)) for combinatio in combination])
-                if index % 1000 == 0:
-                    cur.executemany("INSERT INTO tic_tac_toe_combinations VALUES (?, ?)", values)
-                    values = []
-            
-            # Insert any remaining values
-            if values:
-                cur.executemany("INSERT INTO tic_tac_toe_combinations VALUES (?, ?)", values)
-
-            con.commit()
-        except:
-            con.rollback()
-            raise
-        finally:
-            con.close()
-
     def add_league_information_to_tic_tac_toe_combinations():
         """
         This function adds information of possible league exclusive combinations to the tic_tac_toe_combinations table.
         It adds the league_id to the df, which indicates the league out of which a combination is possible.
         """
-        df = pd.read_sql_query(f"select * from data_tic_tac_toe_combinations", sqlite3.connect("Database/database.db"))
+        df = pd.read_sql_query(f"select * from tic_tac_toe_combinations", sqlite3.connect("Database/database.db"))
         # df= df.iloc[0:10]
         df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
         df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
@@ -251,6 +214,10 @@ class createTables: # alternatively fillTables
 
 if __name__ == "__main__":
     config = Configuration()
+    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
+    getTables = getTables()
+    df = getTables.get_player_data()
+    createTables.create_data_tic_tac_toe_table(meta_teams_df, df)
     # createTables.add_league_information_to_tic_tac_toe_combinations()
     # print(df.head())
     # print(df.explode("Axis 2"))

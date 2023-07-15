@@ -29,8 +29,10 @@ class TicTacToeScreen(Screen):
 	O_win = 0
 	t = TicTacToe()
 
-	# league_id = [1]
-	team_combinations = t.roll_combinations(None, 50, config.top_teams)
+	league_id = None
+	team_ids = config.top_teams
+	exact = True
+	team_combinations = t.roll_combinations(league_id, 50, team_ids, exact=exact)
 	getData = getTables()
 	player_df = getData.get_player_data()
 
@@ -98,7 +100,7 @@ class TicTacToeScreen(Screen):
 		if self.index < (len(self.team_combinations)-1):
 			self.index += 1
 		else:
-			self.team_combinations = self.t.roll_combinations(self.league_id, 50, None)
+			self.team_combinations = self.t.roll_combinations(self.league_id, 50, self.team_ids, exact=self.exact)
 			self.index = 0
 		self.team1_id = str(self.team_combinations.loc[self.index, "Axis1"][0])
 		self.team1_name = str(self.team_combinations.loc[self.index, "TeamsAxis1"][0])
@@ -175,9 +177,13 @@ class TicTacToeScreen(Screen):
 			team_id_2 = self.team6_id
 			print(self.team3_name, self.team6_name)
 		df = self.getData.get_combination_results(team_id_1, team_id_2)
-		print(self.selected_player_id)
-		print(df["Player IDs"][0])
-		if str(self.selected_player_id) in df["Player IDs"][0]:# TODO catch keyError
+		try:
+			correct_players = df["Player IDs"][0]
+			print(correct_players)
+		except KeyError:
+			correct_players = df["Player IDs"]
+			print(correct_players)
+		if str(self.selected_player_id) in correct_players:
 			btn.color = "green"
 			if self.turn == 'X':
 				btn.text = "X"
