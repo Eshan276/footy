@@ -20,7 +20,7 @@ import datetime
 
 class createTables: # alternatively fillTables
     
-    def create_meta_clubs_table(config, df, start_year=2000):
+    def create_meta_clubs_table(config, df):
         
         
         # TODO add an check to add only new data that is different from the aready prominent data 
@@ -48,7 +48,7 @@ class createTables: # alternatively fillTables
         cur.close()
         con.close()
     
-    def create_data_clubs_table(config, df):
+    def create_data_clubs_table(config):
         # fill the datatable with data for each club in the meta table regrdless of their playing league (e.g. 1st or 2nd division)  
 
         # TODO add an check to add only new data that is different from the aready prominent data 
@@ -65,6 +65,11 @@ class createTables: # alternatively fillTables
         con = sqlite3.connect("Database/database.db")
         cur = con.cursor()
         # insert the df as a new table into our database
+        # TODO add new_varaible that indicates if a team was in the top flight for that season
+        df = get_teams_all_leagues(config, years = [year for year in range(2000,2023)])
+        # needs to be 4922
+        df["top_flight"] = 1
+        df = add_all_historical_info_selected_teams(df)
         df.to_sql(name="data_club_table", con=con, if_exists="replace", index=False)
         con.commit()
         cur.close()
@@ -214,10 +219,12 @@ class createTables: # alternatively fillTables
 
 if __name__ == "__main__":
     config = Configuration()
-    meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
-    getTables = getTables()
-    df = getTables.get_player_data()
-    createTables.create_data_tic_tac_toe_table(meta_teams_df, df)
+    createTables.create_data_clubs_table(config)
+
+    # meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
+    # getTables = getTables()
+    # df = getTables.get_player_data()
+    # createTables.create_data_tic_tac_toe_table(meta_teams_df, df)
     # createTables.add_league_information_to_tic_tac_toe_combinations()
     # print(df.head())
     # print(df.explode("Axis 2"))

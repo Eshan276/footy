@@ -15,6 +15,8 @@ import datetime
 def get_teams(league_url, years, league_id):
     '''Scrape team information for certain leagues and given years.'''
     df = pd.DataFrame()
+    if type(years) == int:
+        years = [years]
     for year in years:
         url = league_url + f"/plus/?saison_id={year}"
 
@@ -40,9 +42,8 @@ def get_teams(league_url, years, league_id):
         df = pd.concat([df, teams_df], axis=0)
     return df
 
-def get_teams_all_leagues(config, start_year): 
+def get_teams_all_leagues(config, years = [year for year in range(2000,2023)]): 
     league_urls = config.league_ids
-    years = [year for year in range(start_year,2023)]
     combined_df = pd.DataFrame()
     for league_url in league_urls.keys():
         print(f"Starting {list(league_urls.keys()).index(league_url)+1}/{len(list(league_urls.keys()))} - {datetime.datetime.now()}")
