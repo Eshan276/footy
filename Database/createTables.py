@@ -68,7 +68,6 @@ class createTables: # alternatively fillTables
         # TODO add new_varaible that indicates if a team was in the top flight for that season
         df = get_teams_all_leagues(config, years = [year for year in range(2000,2023)])
         # needs to be 4922
-        df["top_flight"] = 1
         df = add_all_historical_info_selected_teams(df)
         df.to_sql(name="data_club_table", con=con, if_exists="replace", index=False)
         con.commit()
@@ -219,7 +218,7 @@ class createTables: # alternatively fillTables
 
 if __name__ == "__main__":
     config = Configuration()
-    createTables.create_data_clubs_table(config)
+    # createTables.create_data_clubs_table(config)
 
     # meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))
     # getTables = getTables()

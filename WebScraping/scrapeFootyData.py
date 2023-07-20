@@ -39,6 +39,7 @@ def get_teams(league_url, years, league_id):
         teams_df = pd.DataFrame.from_dict(teams, orient="index").reset_index(drop=False, names="team_name")
         teams_df["year"] = year
         teams_df["league_id"] = league_id
+        teams_df["top_flight"] = 1
         df = pd.concat([df, teams_df], axis=0)
     return df
 
