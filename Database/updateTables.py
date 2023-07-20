@@ -17,7 +17,6 @@ class updateTables:
 
 
     def update_meta_clubs_table(self, config, start_year=[2023]):
-    
         # load in the current df
         old_df = pd.read_sql_query(f"select * from meta_club_table", self.con)
         # then get the new df
@@ -37,15 +36,13 @@ class updateTables:
         self.update_data_clubs_table(df=df)
         # handle completely new teams
         if len(new_teams_df)>0:
-            # TODO add players of these teams to the db
-            # df = df.loc[df.id.isin(new_teams_df.id.unique())]
-            # print(df)
-            # df = add_all_historical_info_selected_teams(df) # update data table
-            # print(df)
             # insert the new names into meta_club_table
             for index, row in new_teams_df.iterrows():
-                sql = f"""INSERT INTO meta_club_table ({row['team_name']}, {row['id']}, {row['league_id']})"""
-                self.cur.execute(sql)
+                sql = "INSERT INTO meta_club_table (team_name, id, league_id) VALUES (?, ?, ?)"
+                values = (row['team_name'], row['id'], row['league_id'])
+                # self.cur.execute(sql, values)
+        else:
+            print("----- No new teams to add to meta_club_table -----")
         # insert the df as a new table into our database
         # unique_df.to_sql(name="meta_club_table", con=con, if_exists="replace", index=False)
         self.con.commit()
@@ -54,32 +51,28 @@ class updateTables:
 
     def update_data_clubs_table(self, df=None):
         old_df = pd.read_sql_query(f"select * from data_club_table", self.con)
-        '''
-        meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", con)
-        # select teams that are present in the meta df but not in the data df
-        ids = list(set(meta_teams_df.id.unique())-set(old_df.id.unique()))
-        print(ids)'''
         df = pd.concat([old_df, df], axis=0)
         df = add_all_historical_info_selected_teams(df)
         df["year"] = df["year"].apply(lambda x: int(x))
-        print(old_df)
-        new_rows_df = df[~df.isin(old_df)].dropna(how = 'all') 
-        print(new_rows_df)
+        new_rows_df = df[~df.apply(lambda x: (int(x['id']), int(x['year'])) in zip(old_df["id"].astype(int), old_df["year"].astype(int)), axis=1)]
         if len(new_rows_df)>0:
             new_rows_df["year"] = new_rows_df["year"].astype(int)
-            # new_rows_df.to_sql(name="data_club_table", con=self.con, if_exists="append", index=False)
+            new_rows_df.to_sql(name="data_club_table", con=self.con, if_exists="append", index=False)
             self.con.commit()
         else:
-            print("No new rows to add to data_club_table")
+            print("----- No new rows to add to data_club_table -----")
+
+    
+    def update_data_player_table(self):
+        pass
+
 if __name__ == "__main__":
     config = Configuration()
-    uT = updateTables()
-    uT.update_meta_clubs_table(config)
-    # uT.update_data_clubs_table()
-    # con =  sqlite3.connect("Database/database.db")
 
-    # old_df = pd.read_sql_query(f"select * from data_club_table", con)
-    # old_df = old_df.drop_duplicates()
-    # old_df.to_sql(name="data_club_table", con=con, if_exists="replace", index=False)
-    # con.commit()
-    # con.close()
+
+    # WORKFLOW TO UPDATE CLUB TABLES
+
+    # config = Configuration()
+    # uT = updateTables()
+    # uT.update_meta_clubs_table(config, start_year=[2022, 2023])
+    
