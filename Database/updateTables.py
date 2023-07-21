@@ -59,17 +59,30 @@ class updateTables:
             new_rows_df["year"] = new_rows_df["year"].astype(int)
             new_rows_df.to_sql(name="data_club_table", con=self.con, if_exists="append", index=False)
             self.con.commit()
+            return new_rows_df
         else:
             print("----- No new rows to add to data_club_table -----")
 
     
-    def update_data_player_table(self):
-        pass
+    def update_data_player_table(self, config, new_rows_df=None):
+        # 1. detect new players -> and add them to the db with added info
+        # 2. then go through each player in db and add new info if present
+        sql = "Select player_id from data_player_table"
+        old_ids = pd.read_sql_query(sql, self.con)["player_id"].tolist()
+        df = get_players_for_all_teams(config, new_rows_df.iloc[:1000,:])
+        new_ids = df["player_id"].tolist()
+        new_ids = [id for id in new_ids if id not in old_ids]
+        new_players_df = df.loc[df["player_id"].isin(new_ids),:]
+        print(new_players_df)
+        
 
 if __name__ == "__main__":
     config = Configuration()
-
-
+    uT = updateTables()
+    new_rows_df = pd.read_sql_query(f"select * from data_club_table", uT.con)
+    new_rows_df = new_rows_df.loc[(new_rows_df["year"]==2023)|(new_rows_df["id"].isin(["2036", "1031"])),:]
+    # print(new_rows_df.iloc[[27,28, 36, 45, 74],:])
+    uT.update_data_player_table(config, new_rows_df=new_rows_df)
     # WORKFLOW TO UPDATE CLUB TABLES
 
     # config = Configuration()

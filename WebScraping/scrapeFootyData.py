@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import os
 from tqdm import tqdm
+import re
 
 # Add the project root directory to the Python path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,16 +89,27 @@ def get_players(team_url):
     bs = BeautifulSoup(html, 'html.parser')
     # Get the team names
     try:
-        player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})# problem with index 2449
+        # Find all 'a' tags with 'href' attributes
+        player_rows = bs.find('table', {'class': 'items'}).find_all('a', href=True)
+        # Define the regex pattern to match player URLs
+        regex_pattern = r"/[^/]+/profil/spieler/\d+"
         players = {}
         for row in player_rows:
-            if "wechsel-kader-wappen" in row["class"]:# skip entries not linked to players
-                continue
-            player_name = row.text
-            player_href = row.find("a")["href"]
-            player_id = player_href.split("/")[-1]
-            players[player_id] = {"player_href": player_href, "players":player_name}
-
+            if re.search(regex_pattern, row['href']):
+                player_name = row.text
+                player_href = row["href"]
+                player_id = player_href.split("/")[-1]
+                players[player_id] = {"player_href": player_href, "players":player_name}
+        '''
+        if len(players)==0:
+            player_rows = bs.find('table', {'class': 'items'}).find_all('span', {"class":"hide-for-small"})
+            for row in player_rows:
+                if "wechsel-kader-wappen" in row["class"]:# skip entries not linked to players
+                    continue
+                player_name = row.text
+                player_href = row.find("a")["href"]
+                player_id = player_href.split("/")[-1]
+                players[player_id] = {"player_href": player_href, "players":player_name}'''
         player_dates, player_numbers = [], []
         team_rows = bs.find('table', {'class': 'items'}).find_all('td', {"class":"zentriert"})
         for row in team_rows:
@@ -108,13 +120,28 @@ def get_players(team_url):
             else:
                 player_numbers.append(row.get_text())
 
+        ''''
+        print(player_dates)
+        print(player_numbers)
+        print(players.keys())
+        print(len(player_dates))
+        print(len(player_numbers))
+        print(len(players.keys()))'''
         # not ideal but add the dates and numbers based on their index position
-        if len(players.keys()) == len(player_dates) & len(players.keys()) == len(player_numbers):
+        if (len(players.keys()) == len(player_dates)) & (len(players.keys()) == len(player_numbers)):
             for player_id in players.keys():
                 players[player_id]["Birthday"] = player_dates[list(players.keys()).index(player_id)]
                 players[player_id]["Number"] = player_numbers[list(players.keys()).index(player_id)]
+        elif(len(players.keys()) == len(player_dates)):
+            for player_id in players.keys():
+                players[player_id]["Birthday"] = player_dates[list(players.keys()).index(player_id)]
+            print(f"Not matching numbers {team_url}")
+        elif(len(players.keys()) == len(player_numbers)):
+            for player_id in players.keys():
+                players[player_id]["Number"] = player_numbers[list(players.keys()).index(player_id)]
+            print(f"Not matching dates {team_url}")
         else:
-            print("Not matching dates and/or numbers")
+            print(f"Not matching dates and numbers {team_url}")
         # Create a DataFrame from the dictionary
         player_df = pd.DataFrame.from_dict(players, orient='index').reset_index(drop=False, names="player_id")
     except AttributeError:
@@ -243,9 +270,12 @@ def get_players_for_all_teams(config, df):
 
 if __name__ == "__main__":
     # league_url = "https://www.transfermarkt.de/bundesliga/startseite/wettbewerb/L1"
-    config = Configuration()
-    df = get_player_info("https://www.transfermarkt.com/georgi-ivanov/profil/spieler/5678")
-    print(df)
+    # config = Configuration()
+    # df = get_player_info("https://www.transfermarkt.com/georgi-ivanov/profil/spieler/5678")
+    # print(df)
+
+
+
     # df = get_teams_all_leagues(config, start_year=2000) # pd.read_csv("Combined.csv")
     # print(df)
     #updated_df = add_all_historical_info_selected_teams(df)
