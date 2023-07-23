@@ -2,7 +2,8 @@ from kivy.lang import Builder
 from kivymd.app import MDApp
 import os
 import sys
-import ast
+import random
+import pandas as pd
 project = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project)
 from Database.getTables import getTables
@@ -33,10 +34,11 @@ class TicTacToeScreen(Screen):
 	team_ids = config.top_teams
 	exact = True
 	team_combinations = t.roll_combinations(league_id, 50, team_ids, exact=exact)
+	random_iteration_order = pd.Series(list(range(len(team_combinations)))).sample(frac=1).tolist()
 	getData = getTables()
 	player_df = getData.get_player_data()
 
-	index = 0
+	index = random_iteration_order.pop()
 	# load the first teams ids
 	team1_id = str(team_combinations.loc[index, "Axis1"][0])
 	team1_name = str(team_combinations.loc[index, "TeamsAxis1"][0])
@@ -97,11 +99,9 @@ class TicTacToeScreen(Screen):
 
 	def next_combination(self):
 		# maybe include random reroll of positions
-		if self.index < (len(self.team_combinations)-1):
-			self.index += 1
-		else:
-			self.team_combinations = self.t.roll_combinations(self.league_id, 50, self.team_ids, exact=self.exact)
-			self.index = 0
+		if not (self.index < (len(self.team_combinations)-1)):
+			self.random_iteration_order = pd.Series(list(range(len(self.team_combinations)))).sample(frac=1).tolist()
+		self.index = self.random_iteration_order.pop()
 		self.team1_id = str(self.team_combinations.loc[self.index, "Axis1"][0])
 		self.team1_name = str(self.team_combinations.loc[self.index, "TeamsAxis1"][0])
 		self.team2_id = str(self.team_combinations.loc[self.index, "Axis1"][1])

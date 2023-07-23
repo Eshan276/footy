@@ -213,11 +213,75 @@ class createTables: # alternatively fillTables
         con.commit()
         con.close()
 
+    def normalize_tic_tac_toe_tables(df=None, delete=False):
+        """
+        This function normalizes the tic_tac_toe_combinations table into the following tables:
+        - tic_tac_toe_axis_1
+        - tic_tac_toe_axis_2"""
+        con = sqlite3.connect("Database/database.db")
+        cursor = con.cursor()
+
+        # Load in the previous table
+        cursor.execute("SELECT * FROM tic_tac_toe_combinations")
+        rows = cursor.fetchall()
+        if delete:
+            # Clear the data in tic_tac_toe_axis_1 table
+            cursor.execute("DELETE FROM tic_tac_toe_axis_1")
+
+            # Clear the data in tic_tac_toe_axis_2 table
+            cursor.execute("DELETE FROM tic_tac_toe_axis_2")
+
+            # Commit the changes to remove data from the tables
+            con.commit()
+
+        # Create tic_tac_toe_axis_1 table
+        cursor.execute("CREATE TABLE IF NOT EXISTS tic_tac_toe_axis_1 (Axis_1_ID INTEGER PRIMARY KEY, team_1 INTEGER, team_2 INTEGER, team_3 INTEGER, League_ID INTEGER)")
+
+        # Create tic_tac_toe_axis_2 table
+        cursor.execute("CREATE TABLE IF NOT EXISTS tic_tac_toe_axis_2 (Axis_2_ID INTEGER PRIMARY KEY, team_id INTEGER, Axis_1_ID INTEGER, League_ID INTEGER)")
+        
+        axis_1_values = {}
+        axis_2_values = {}  # Use a dictionary to keep track of (team_id, axis_1_id) pairs
+
+        for row in tqdm(rows):
+            axis_1 = ast.literal_eval(row[0])
+            axis_2 = ast.literal_eval(row[1])
+            if type(row[2]) == type(None):
+                league_id = None
+            else:
+                league_id = int(row[2])
+
+            axis_1 = tuple(axis_1)
+            axis_2 = tuple(axis_2)
+
+            # Check if the axis_1 value is already processed
+            if axis_1 not in axis_1_values:
+                # Get the next available Axis_1_ID
+                axis_1_id = len(axis_1_values) + 1
+
+                axis_1_values[axis_1] = axis_1_id
+                team_1, team_2, team_3 = axis_1
+                cursor.execute("INSERT INTO tic_tac_toe_axis_1 (Axis_1_ID, team_1, team_2, team_3, League_ID) VALUES (?, ?, ?, ?, ?)", (axis_1_id, team_1, team_2, team_3, league_id))
+            else:
+                axis_1_id = axis_1_values[axis_1]
+
+            # Insert axis_2 values into tic_tac_toe_axis_2 table if the combination is not yet present
+            for team_id in axis_2:
+                # if (team_id, axis_1_id) not in axis_2_values:
+                #     axis_2_values[(team_id, axis_1_id)] = True
+                cursor.execute("INSERT INTO tic_tac_toe_axis_2 (team_id, Axis_1_ID, League_ID) VALUES (?, ?, ?)", (team_id, axis_1_id, league_id))
+
+        # Commit the changes to insert data into the tables
+        con.commit()
+
+        # Close the connection
+        con.close()
 
 
 
 if __name__ == "__main__":
     config = Configuration()
+    createTables.normalize_tic_tac_toe_tables()
     # createTables.create_data_clubs_table(config)
 
     # meta_teams_df = pd.read_sql_query(f"select * from meta_club_table", sqlite3.connect("Database/database.db"))

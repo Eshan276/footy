@@ -53,6 +53,57 @@ class getTables:
         self.con.close()
         return df
     
+    def select_base_new(self, team_ids=None, league_ids=None, exclusive=True):
+        if team_ids != None: 
+            if exclusive:
+                sql = f"""SELECT team_id, A1.team_1, A1.team_2, A1.team_3, A1.Axis_1_ID
+                            FROM tic_tac_toe_axis_2 
+                            INNER JOIN (
+                                SELECT Axis_1_ID, team_1, team_2, team_3
+                                FROM tic_tac_toe_axis_1 
+                                WHERE team_1 IN {tuple(team_ids)}
+                                AND team_2 IN {tuple(team_ids)}
+                                AND team_3 IN {tuple(team_ids)}
+                            ) AS A1 
+                            ON tic_tac_toe_axis_2.Axis_1_ID = A1.Axis_1_ID
+                            WHERE team_id IN {tuple(team_ids)}"""
+            else:
+                sql = f"""SELECT team_id, A1.team_1, A1.team_2, A1.team_3, A1.Axis_1_ID
+                                FROM tic_tac_toe_axis_2 
+                                INNER JOIN (
+                                    SELECT Axis_1_ID, team_1, team_2, team_3
+                                    FROM tic_tac_toe_axis_1 
+                                    WHERE team_1 IN {tuple(team_ids)}
+                                    OR team_2 IN {tuple(team_ids)}
+                                    OR team_3 IN {tuple(team_ids)}
+                                ) AS A1 
+                                ON tic_tac_toe_axis_2.Axis_1_ID = A1.Axis_1_ID"""
+                
+        if league_ids != None: 
+            sql = f"""SELECT team_id, A1.team_1, A1.team_2, A1.team_3, League_ID, A1.Axis_1_ID
+                    FROM tic_tac_toe_axis_2 
+                    INNER JOIN (
+                        SELECT Axis_1_ID, team_1, team_2, team_3
+                        FROM tic_tac_toe_axis_1 
+                        WHERE League_ID IN {tuple(league_ids)}
+                    ) AS A1 
+                    ON tic_tac_toe_axis_2.Axis_1_ID = A1.Axis_1_ID
+                    Where League_ID IN {tuple(league_ids)};"""
+        df = pd.read_sql_query(sql, self.con)
+        self.con.close()
+        # format the df into the desired output
+        output_df = pd.DataFrame(columns=["Axis 1", "Axis 2"])
+        combinations_data = []
+        for combination in df["Axis_1_ID"].unique():
+            unique_axis_2_teams = list(df.loc[df["Axis_1_ID"]==combination, "team_id"].unique())
+            if len(unique_axis_2_teams)>2:
+                combination_df = {}
+                combination_df["Axis 1"] = list(df.loc[df["Axis_1_ID"]==combination, ["team_1", "team_2", "team_3"]].drop_duplicates().values[0])
+                combination_df["Axis 2"] = unique_axis_2_teams
+                combinations_data.append(combination_df)
+        output_df = pd.DataFrame(combinations_data)
+        return output_df
+    
     def get_combination_results(self, team_id_1, team_id_2):
         self.con = sqlite3.connect("Database/database.db")
         df = pd.read_sql_query(f'select * from data_tic_tac_toe_table where ("Club 1" in ({team_id_1}) and "Club 2" in ({team_id_2})) or ("Club 1" in ({team_id_2}) and "Club 2" in ({team_id_1}))', self.con)
@@ -63,7 +114,7 @@ class getTables:
 if __name__ == "__main__":
     t = getTables()
     config = Configuration()
-    df = t.select_base(team_ids=config.top_teams, league_ids=None)
+    df = t.select_base_new(team_ids=config.top_teams, league_ids=None, exclusive=True)
     print(df)
     '''df = t.get_combination_results(583, 1041)
     print(df["Player IDs"][0])

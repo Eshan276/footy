@@ -1,7 +1,6 @@
 import sqlite3
 import random
 import pandas as pd
-import ast
 from itertools import combinations
 # Add the project root directory to the Python path
 import os
@@ -16,7 +15,7 @@ class TicTacToe:
         # get team_df
         self.meta_teams_df = pd.read_sql_query("Select * from meta_club_table", sqlite3.connect("Database/database.db"))
 
-    def roll_combinations(self, league_ids=None, num_random_numbers=50, team_ids=None, exact=False):
+    def roll_combinations(self, league_ids=None, num_random_numbers=50, team_ids=None, exact=True):
         '''
         Create a dict of [num_random_numbers] of random combinations for a tic tac toe grid. 
         '''
@@ -26,24 +25,13 @@ class TicTacToe:
             # TODO maybe no need to load Configuration instead use self.meta_teams_df
             config = Configuration()
             team_ids = [id for league_id in league_ids for id in config.team_ids[league_id]]
-            df = getTables.select_base(gT, team_ids=None, league_ids=league_ids)
+            df = getTables.select_base_new(gT, team_ids=None, league_ids=league_ids, exclusive=exact)
         else:
-            df = getTables.select_base(gT, team_ids=team_ids, league_ids=None)
-            # TODO maybe include a filter to eclusively select the teams e.g. only those teams are on both axes and no other
-        if (team_ids!=None) & (exact==True):
-            df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
-            df["Axis 1"] = df["Axis 1"].apply(lambda x: [i for i in x if i in team_ids])
-            df = df.loc[df["Axis 1"].apply(len) > 2].reset_index(drop=True)
-            df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
-            df["Axis 2"] = df["Axis 2"].apply(lambda x: [i for i in x if i in team_ids])
-            df = df.loc[df["Axis 2"].apply(len) > 2].reset_index(drop=True)
-        # randomly generate the indexes of the df rows to determine the combinations
-        random_numbers = [random.randint(0, len(df) - 1) for _ in range(num_random_numbers)]
-        df = df.iloc[random_numbers].reset_index(drop=True)
-        if ((team_ids==None) | (exact==False)):
-            # transform the string elements of the columns to lists
-            df["Axis 1"] = df["Axis 1"].apply(ast.literal_eval)
-            df["Axis 2"] = df["Axis 2"].apply(ast.literal_eval)
+            df = getTables.select_base_new(gT, team_ids=team_ids, league_ids=None, exclusive=exact)
+        if len(df)>20000:            
+            # randomly generate the indexes of the df rows to determine the combinations -> faster computation time -> TODO maybe build into query even faster
+            random_numbers = [random.randint(0, len(df) - 1) for _ in range(num_random_numbers)]
+            df = df.iloc[random_numbers].reset_index(drop=True)
         if league_ids != None: 
             # if a league is picked then axis 1 is automatically restricted to teams from the league
             # therefore also limit axis 2 to teams from that league
