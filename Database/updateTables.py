@@ -1,7 +1,8 @@
 import sqlite3
 import pandas as pd
-import ast
+from tqdm import tqdm
 import sys
+import re
 import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
@@ -67,13 +68,51 @@ class updateTables:
     def update_data_player_table(self, config, new_rows_df=None):
         # 1. detect new players -> and add them to the db with added info
         # 2. then go through each player in db and add new info if present
-        sql = "Select player_id from data_player_table"
-        old_ids = pd.read_sql_query(sql, self.con)["player_id"].tolist()
+        old_df = pd.read_sql_query(f"select * from data_player_table", self.con)
+        old_ids = old_df["player_id"].tolist()
+        print("Fetching the player data for each team.")
         df = get_players_for_all_teams(config, new_rows_df.iloc[:1000,:])
         new_ids = df["player_id"].tolist()
         new_ids = [id for id in new_ids if id not in old_ids]
         new_players_df = df.loc[df["player_id"].isin(new_ids),:]
+        added_info_df = pd.DataFrame()
+        print("Fetching the individual player data from each player's website.")
+        for index, row in tqdm(new_players_df.iterrows(), total=len(new_players_df)):
+            new_row = get_player_info(f"{config.base_url}{row['player_href']}")
+            added_info_df = pd.concat([added_info_df, new_row], axis=0)
+        added_info_df = added_info_df.reset_index(drop=True)
+        new_players_df = pd.merge(new_players_df, added_info_df, on="player_id", how="left")
         print(new_players_df)
+        # add the new player to the db
+        # new_players_df.to_sql(name="data_player_table", con=self.con, if_exists="append", index=False)
+        # self.con.commit()
+        # 2. then go through each player in db and add new info if present
+        print("Updating all players in the current database.")
+        
+        # Convert the 'birthday' column to datetime type
+        old_df['Birthday'] = old_df['Birthday'].astype(str)
+        old_df["birthday_date"] = old_df["Birthday"].apply(lambda x: re.search(r'\w+ \d+, \d{4}', x).group(0) if re.search(r'\w+ \d+, \d{4}', x) else None)
+        old_df['birthday_date'] = pd.to_datetime(old_df['birthday_date'], format='%b %d, %Y')
+
+        # Access the year from the datetime objects and store it in a new column 'year'
+        old_df['year'] = old_df['birthday_date'].dt.year
+        # filter the df to exclude players that are too old (i.e. 40)
+        filtered_df = old_df.loc[old_df["year"]>=1983,:]
+        filtered_df = filtered_df.loc[filtered_df["player_id"].isin(["503482", "125103"])]
+        print(filtered_df)
+        columns_to_check = ["player_id", "transfer_hrefs", "transfer_years", "current_club", "transfer_club_ids", "current_mv", "max_mv"]
+        # If you want to update the old_df with the updated rows, you can do the following:
+        for index, row in tqdm(filtered_df.iloc[:,:].iterrows(), total=len(filtered_df.iloc[:,:])):
+            new_row = get_player_info(f"{config.base_url}{row['player_href']}")
+            boolean_mask = [(new_row[col].astype(str) == row[col])[0] for col in columns_to_check]
+            if False in boolean_mask:
+                print("----- Updating player -----")
+                print(new_row)
+                print(row)
+                # 1. create the new row
+                # 2. update the row
+            # added_info_df = pd.concat([added_info_df, new_row], axis=0)
+
         
 
 if __name__ == "__main__":
@@ -82,7 +121,7 @@ if __name__ == "__main__":
     new_rows_df = pd.read_sql_query(f"select * from data_club_table", uT.con)
     new_rows_df = new_rows_df.loc[(new_rows_df["year"]==2023)|(new_rows_df["id"].isin(["2036", "1031"])),:]
     # print(new_rows_df.iloc[[27,28, 36, 45, 74],:])
-    uT.update_data_player_table(config, new_rows_df=new_rows_df)
+    uT.update_data_player_table(config, new_rows_df=new_rows_df.iloc[:5,:])
     # WORKFLOW TO UPDATE CLUB TABLES
 
     # config = Configuration()
