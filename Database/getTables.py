@@ -9,6 +9,7 @@ from Configuration import Configuration
 
 
 class getTables:
+
     def __init__(self):
         self.con = sqlite3.connect("Database/database.db")
         self.cur = self.con.cursor()
@@ -110,6 +111,12 @@ class getTables:
         df["Player IDs"] = df["Player IDs"].apply(ast.literal_eval)
         self.con.close()
         return df
+
+    def get_meta_teams_df(self):
+        meta_teams_df = pd.read_sql_query("Select * from meta_club_table", self.con)
+        self.cur.close()
+        self.con.close()
+        return meta_teams_df
 
 if __name__ == "__main__":
     t = getTables()
