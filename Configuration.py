@@ -1,5 +1,3 @@
-
-
 class Configuration():
     def __init__(self):
         self.league_ids = {"/bundesliga/startseite/wettbewerb/L1":1, "/premier-league/startseite/wettbewerb/GB1":2,

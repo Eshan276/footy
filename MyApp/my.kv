@@ -1,3 +1,65 @@
+# Import necessary classes and modules
+#:import NoTransition kivy.uix.screenmanager.NoTransition
+#:import SlideTransition kivy.uix.screenmanager.SlideTransition
+
+# Define the screens and their layouts
+ScreenManager:
+	transition: SlideTransition()  # You can customize the transition animation here
+
+	MenuScreen:
+		name: 'menu'
+
+
+	TicTacToeScreen:
+		name: 'tictactoe'
+
+<MenuScreen>:
+    MDFloatLayout:
+        MDLabel:
+            text: "Footy Tic Tac Toe"
+            font_size: "50sp"
+            halign: "center"
+            pos_hint: {"center_x": .5, "center_y": .8}
+
+        MDLabel:
+            text: "Grid Configuration Settings"
+            font_size: "25sp"
+            halign: "center"
+            pos_hint: {"center_x": .5, "center_y": .7}
+
+        MDLabel:
+            text: "Top 20 Teams-Grid"
+            font_size: "20sp"
+            halign: "center"
+            pos_hint: {"center_x": .45, "center_y": .6}
+        
+        MDTextField:
+            size_hint: .35, .1
+            pos_hint: {'center_x': .52, 'center_y': .5}
+            id: team_search_field
+            hint_text: 'Search teamname'
+            helper_text: "Select Teams to be included into grid (min. 6)"
+            on_text: root.add_team_name(self.text)
+
+        MDDropdownMenu:
+            id: dropdown_menu_1
+            caller: team_search_field  # Use the id directly since it's in the same rule
+            items: []
+            width_mult: 4
+
+        MDSwitch:
+            active: True
+            pos_hint: {"center_x": .65, "center_y": .6}
+
+        MDRectangleFlatButton:
+            text: "Play Tic Tac Toe"
+            size_hint: .3, .1
+            color: 0, 0, 0, 1
+            pos_hint: {"center_x": 0.5, "center_y": 0.1}
+            on_release: root.open_tictactoe_screen()
+
+
+
 <TicTacToeScreen>:
 	MDFloatLayout:
 		MDTextField:
@@ -6,6 +68,12 @@
 			id: search_field
 			hint_text: 'Search player'
 			on_text: root.on_text(self, self.text)
+		
+		MDDropdownMenu:
+            id: dropdown_menu
+            caller: search_field
+            items: []
+			width_mult: 4
 
 		MDLabel:
 			id: labell
@@ -145,7 +213,7 @@
 			pos_hint: {"center_x": .5, "center_y": .05}	
 		
 		Button:
-			text: "switch_view"
+			text: "Return to Start Screen"
 			size_hint: .1, .1
 			pos_hint: {"center_x": .7, "center_y": .05}	
 			font_size: "12sp"
